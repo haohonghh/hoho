@@ -17,6 +17,8 @@ public class AiProxyProperties
 
     private final Embedding embedding = new Embedding();
 
+    private final Memory memory = new Memory();
+
     public Chat getChat()
     {
         return chat;
@@ -25,6 +27,11 @@ public class AiProxyProperties
     public Embedding getEmbedding()
     {
         return embedding;
+    }
+
+    public Memory getMemory()
+    {
+        return memory;
     }
 
     public static class Chat
@@ -66,6 +73,45 @@ public class AiProxyProperties
         public void setBatchSize(int batchSize)
         {
             this.batchSize = batchSize;
+        }
+    }
+
+    public static class Memory
+    {
+        private int maxMessages = 10;
+
+        private long ttlMinutes = 120L;
+
+        private String keyPrefix = "hoho:ai:memory:";
+
+        public int getMaxMessages()
+        {
+            return maxMessages;
+        }
+
+        public void setMaxMessages(int maxMessages)
+        {
+            this.maxMessages = maxMessages;
+        }
+
+        public long getTtlMinutes()
+        {
+            return ttlMinutes;
+        }
+
+        public void setTtlMinutes(long ttlMinutes)
+        {
+            this.ttlMinutes = ttlMinutes;
+        }
+
+        public String getKeyPrefix()
+        {
+            return keyPrefix;
+        }
+
+        public void setKeyPrefix(String keyPrefix)
+        {
+            this.keyPrefix = keyPrefix;
         }
     }
 }

@@ -5,6 +5,7 @@ import java.util.List;
 import com.hoho.bot.api.RemoteAiProxyService;
 import com.hoho.bot.api.RemoteKbService;
 import com.hoho.bot.model.request.AiChatRequest;
+import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.request.KbSearchRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.bot.model.response.KbSearchItem;
@@ -43,6 +44,19 @@ class BotFeignClientTest
         assertEquals("用户问题", remoteAiProxyService.lastChatRequest.getMessage());
         assertEquals(0.3D, remoteAiProxyService.lastChatRequest.getTemperature());
         assertEquals("AI回答", response.getContent());
+    }
+
+    @Test
+    void 对话客户端通过Feign接口追加短期记忆()
+    {
+        StubRemoteAiProxyService remoteAiProxyService = new StubRemoteAiProxyService();
+        AiProxyClient aiProxyClient = new AiProxyClient(remoteAiProxyService);
+
+        aiProxyClient.appendMemory("session-1", "用户问题", "助手回答");
+
+        assertEquals("session-1", remoteAiProxyService.lastMemoryRequest.getConversationId());
+        assertEquals("用户问题", remoteAiProxyService.lastMemoryRequest.getUserMessage());
+        assertEquals("助手回答", remoteAiProxyService.lastMemoryRequest.getAssistantMessage());
     }
 
     @Test
@@ -86,6 +100,8 @@ class BotFeignClientTest
     {
         private AiChatRequest lastChatRequest;
 
+        private AiMemoryAppendRequest lastMemoryRequest;
+
         @Override
         public R<AiChatResponse> chat(AiChatRequest request)
         {
@@ -94,6 +110,13 @@ class BotFeignClientTest
             response.setConversationId(request.getConversationId());
             response.setContent("AI回答");
             return R.ok(response);
+        }
+
+        @Override
+        public R<Void> appendMemory(AiMemoryAppendRequest request)
+        {
+            lastMemoryRequest = request;
+            return R.ok();
         }
     }
 }

@@ -3,6 +3,12 @@
 # Group: DEFAULT_GROUP
 
 spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 10s
   ai:
     model:
       chat: dashscope
@@ -29,3 +35,7 @@ hoho:
     embedding:
       dimension: 1024
       batch-size: 16
+    memory:
+      max-messages: 10
+      ttl-minutes: 120
+      key-prefix: hoho:ai:memory:

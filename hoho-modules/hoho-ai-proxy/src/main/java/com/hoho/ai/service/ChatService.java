@@ -1,20 +1,16 @@
 package com.hoho.ai.service;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.hoho.ai.config.AiProxyProperties;
 import com.hoho.ai.model.request.ChatRequest;
 import com.hoho.ai.model.response.AiChatResponse;
 import com.hoho.common.core.utils.StringUtils;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Service;
 
 /**
@@ -27,11 +23,16 @@ public class ChatService
 {
     private final ChatModel chatModel;
 
+    private final ChatClient chatClient;
+
     private final AiProxyProperties aiProxyProperties;
 
-    public ChatService(ChatModel chatModel, AiProxyProperties aiProxyProperties)
+    public ChatService(ChatModel chatModel, ChatMemory chatMemory, AiProxyProperties aiProxyProperties)
     {
         this.chatModel = chatModel;
+        this.chatClient = ChatClient.builder(chatModel)
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .build();
         this.aiProxyProperties = aiProxyProperties;
     }
 
@@ -40,9 +41,9 @@ public class ChatService
      * <p>
      * 核心流程：
      * 1. 校验用户消息内容非空；若请求中未指定系统提示词，则使用配置的默认值
-     * 2. 组装消息列表（可选的 SystemMessage + 必填的 UserMessage）
+     * 2. 使用 Spring AI Advisor 按 user/assistant 角色读取并写入短期记忆
      * 3. 将请求中的模型参数（model/temperature/maxTokens）合并到 DashScopeChatOptions
-     * 4. 调用底层 ChatModel 获取模型响应
+     * 4. 调用底层 ChatModel 获取模型响应，并由 Advisor 自动记录本轮 user/assistant 消息
      * 5. 将 Spring AI 的标准 ChatResponse 转换为自定义的 AiChatResponse，
      *    携带会话ID、回复内容、使用的模型及 Token 用量统计
      * </p>
@@ -54,19 +55,18 @@ public class ChatService
     {
         String message = requireText(request == null ? null : request.getMessage(), "消息内容不能为空");
         String systemPrompt = defaultIfBlank(request.getSystemPrompt(), aiProxyProperties.getChat().getDefaultSystemPrompt());
+        String conversationId = resolveConversationId(request.getConversationId());
 
-        List<Message> messages = new ArrayList<>();
-        if (StringUtils.isNotBlank(systemPrompt))
-        {
-            messages.add(new SystemMessage(systemPrompt));
-        }
-        messages.add(new UserMessage(message));
-
-        Prompt prompt = new Prompt(messages, buildOptions(request));
-        ChatResponse modelResponse = chatModel.call(prompt);
+        ChatResponse modelResponse = chatClient.prompt()
+                .system(systemPrompt)
+                .user(message)
+                .options(buildOptions(request))
+                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
+                .call()
+                .chatResponse();
 
         AiChatResponse response = new AiChatResponse();
-        response.setConversationId(request.getConversationId());
+        response.setConversationId(conversationId);
         response.setContent(modelResponse.getResult().getOutput().getText());
         response.setModel(modelResponse.getMetadata().getModel());
         response.setUsage(toUsage(modelResponse.getMetadata().getUsage()));
@@ -138,5 +138,10 @@ public class ChatService
     private String defaultIfBlank(String value, String defaultValue)
     {
         return StringUtils.isBlank(value) ? defaultValue : value;
+    }
+
+    private String resolveConversationId(String conversationId)
+    {
+        return StringUtils.isBlank(conversationId) ? ChatMemory.DEFAULT_CONVERSATION_ID : conversationId;
     }
 }

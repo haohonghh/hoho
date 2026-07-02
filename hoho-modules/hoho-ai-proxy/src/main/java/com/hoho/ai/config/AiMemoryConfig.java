@@ -1,4 +1,4 @@
-package com.hoho.bot.config;
+package com.hoho.ai.config;
 
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
@@ -7,19 +7,19 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Spring AI短期记忆配置
+ * AI短期记忆配置
  *
  * @author hoho
  */
 @Configuration
-public class BotMemoryConfig
+public class AiMemoryConfig
 {
     @Bean
-    public ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository, BotProperties botProperties)
+    public ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository, AiProxyProperties aiProxyProperties)
     {
         return MessageWindowChatMemory.builder()
                 .chatMemoryRepository(chatMemoryRepository)
-                .maxMessages(Math.max(2, botProperties.getMemory().getMaxMessages()))
+                .maxMessages(Math.max(2, aiProxyProperties.getMemory().getMaxMessages()))
                 .build();
     }
 }

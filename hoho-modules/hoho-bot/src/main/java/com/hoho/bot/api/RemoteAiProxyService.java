@@ -2,6 +2,7 @@ package com.hoho.bot.api;
 
 import com.hoho.bot.api.factory.RemoteAiProxyFallbackFactory;
 import com.hoho.bot.model.request.AiChatRequest;
+import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.common.core.domain.R;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -25,4 +26,13 @@ public interface RemoteAiProxyService
      */
     @PostMapping("/ai/chat")
     R<AiChatResponse> chat(@RequestBody AiChatRequest request);
+
+    /**
+     * 追加AI短期记忆。
+     *
+     * @param request 短期记忆追加请求
+     * @return 追加结果
+     */
+    @PostMapping("/ai/memory/append")
+    R<Void> appendMemory(@RequestBody AiMemoryAppendRequest request);
 }

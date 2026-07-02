@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.UUID;
 
 import com.hoho.bot.config.BotProperties;
-import com.hoho.bot.memory.BotConversationMemoryService;
 import com.hoho.bot.model.request.BotChatRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.bot.model.response.BotChatResponse;
@@ -31,16 +30,13 @@ public class BotService
 
     private final ConversationRecordService conversationRecordService;
 
-    private final BotConversationMemoryService conversationMemoryService;
-
     public BotService(KbClient kbClient, AiProxyClient aiProxyClient, BotProperties botProperties,
-            ConversationRecordService conversationRecordService, BotConversationMemoryService conversationMemoryService)
+            ConversationRecordService conversationRecordService)
     {
         this.kbClient = kbClient;
         this.aiProxyClient = aiProxyClient;
         this.botProperties = botProperties;
         this.conversationRecordService = conversationRecordService;
-        this.conversationMemoryService = conversationMemoryService;
     }
 
     /**
@@ -87,7 +83,7 @@ public class BotService
         // 路径一：分数达到直接回答阈值，直接返回知识库答案，无需调用 AI
         if (best != null && best.getScore() != null && best.getScore() >= botProperties.getAnswer().getDirectMinScore())
         {
-            return recordAndReturn(fromKb(conversationId, best, references), request.getMessage());
+            return recordAndReturn(fromKb(conversationId, best, references), request.getMessage(), true);
         }
 
         // 路径二：分数达到辅助阈值，将知识库资料注入 system prompt，调用 AI 生成回答
@@ -95,17 +91,17 @@ public class BotService
         {
             AiChatResponse aiResponse = aiProxyClient.chat(
                     conversationId,
-                    buildSystemPromptWithMemory(conversationId, buildAssistSystemPrompt(best)),
+                    buildAssistSystemPrompt(best),
                     request.getMessage());
-            return recordAndReturn(fromAiWithKb(conversationId, aiResponse, best, references), request.getMessage());
+            return recordAndReturn(fromAiWithKb(conversationId, aiResponse, best, references), request.getMessage(), false);
         }
 
         // 路径三：知识库未命中，仅用兜底 system prompt 让 AI 生成回答
         AiChatResponse aiResponse = aiProxyClient.chat(
                 conversationId,
-                buildSystemPromptWithMemory(conversationId, botProperties.getAnswer().getFallbackSystemPrompt()),
+                botProperties.getAnswer().getFallbackSystemPrompt(),
                 request.getMessage());
-        return recordAndReturn(fromAi(conversationId, aiResponse, references), request.getMessage());
+        return recordAndReturn(fromAi(conversationId, aiResponse, references), request.getMessage(), false);
     }
 
     /**
@@ -184,29 +180,14 @@ public class BotService
      * @param response 已经填充好的响应对象
      * @return 同一个 response 对象（用于方法链式返回）
      */
-    private BotChatResponse recordAndReturn(BotChatResponse response, String userMessage)
+    private BotChatResponse recordAndReturn(BotChatResponse response, String userMessage, boolean appendMemory)
     {
         conversationRecordService.recordAssistantMessage(response.getConversationId(), response);
-        conversationMemoryService.recordUserMessage(response.getConversationId(), userMessage);
-        conversationMemoryService.recordAssistantMessage(response.getConversationId(), response.getAnswer());
-        return response;
-    }
-
-    /**
-     * 将短期记忆追加到当前系统提示词后面。
-     *
-     * @param conversationId 当前会话编号
-     * @param systemPrompt   当前路由路径生成的基础提示词
-     * @return 包含短期记忆的系统提示词；无记忆时返回原提示词
-     */
-    private String buildSystemPromptWithMemory(String conversationId, String systemPrompt)
-    {
-        String memoryPrompt = conversationMemoryService.buildMemoryPrompt(conversationId);
-        if (StringUtils.isBlank(memoryPrompt))
+        if (appendMemory)
         {
-            return systemPrompt;
+            aiProxyClient.appendMemory(response.getConversationId(), userMessage, response.getAnswer());
         }
-        return systemPrompt + "\n\n" + memoryPrompt;
+        return response;
     }
 
     /**

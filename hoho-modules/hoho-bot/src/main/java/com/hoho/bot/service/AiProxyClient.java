@@ -2,6 +2,7 @@ package com.hoho.bot.service;
 
 import com.hoho.bot.api.RemoteAiProxyService;
 import com.hoho.bot.model.request.AiChatRequest;
+import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.common.core.domain.R;
 import org.springframework.stereotype.Component;
@@ -56,5 +57,26 @@ public class AiProxyClient
             throw new IllegalStateException(response == null ? "AI代理对话无响应" : response.getMsg());
         }
         return response.getData();
+    }
+
+    /**
+     * 追加未经过模型调用的短期记忆。
+     *
+     * @param conversationId  会话编号
+     * @param userMessage     用户消息
+     * @param assistantAnswer 助手回复
+     */
+    public void appendMemory(String conversationId, String userMessage, String assistantAnswer)
+    {
+        AiMemoryAppendRequest request = new AiMemoryAppendRequest();
+        request.setConversationId(conversationId);
+        request.setUserMessage(userMessage);
+        request.setAssistantMessage(assistantAnswer);
+
+        R<Void> response = remoteAiProxyService.appendMemory(request);
+        if (response == null || R.isError(response))
+        {
+            throw new IllegalStateException(response == null ? "AI短期记忆追加无响应" : response.getMsg());
+        }
     }
 }

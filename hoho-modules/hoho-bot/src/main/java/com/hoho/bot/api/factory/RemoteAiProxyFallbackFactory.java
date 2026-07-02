@@ -2,6 +2,7 @@ package com.hoho.bot.api.factory;
 
 import com.hoho.bot.api.RemoteAiProxyService;
 import com.hoho.bot.model.request.AiChatRequest;
+import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.common.core.domain.R;
 import org.slf4j.Logger;
@@ -29,6 +30,12 @@ public class RemoteAiProxyFallbackFactory implements FallbackFactory<RemoteAiPro
             public R<AiChatResponse> chat(AiChatRequest request)
             {
                 return R.fail("AI代理对话失败:" + throwable.getMessage());
+            }
+
+            @Override
+            public R<Void> appendMemory(AiMemoryAppendRequest request)
+            {
+                return R.fail("AI短期记忆追加失败:" + throwable.getMessage());
             }
         };
     }

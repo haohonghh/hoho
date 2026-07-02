@@ -71,18 +71,6 @@
             <artifactId>hoho-common-security</artifactId>
         </dependency>
 
-        <!-- Hoho Common Redis -->
-        <dependency>
-            <groupId>com.hoho</groupId>
-            <artifactId>hoho-common-redis</artifactId>
-        </dependency>
-
-        <!-- Spring AI 记忆抽象 -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-model</artifactId>
-        </dependency>
-
         <!-- Hoho Common Swagger -->
         <dependency>
             <groupId>com.hoho</groupId>

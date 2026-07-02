@@ -1,21 +1,25 @@
-package com.hoho.bot.memory;
+package com.hoho.ai.memory;
+
+import java.io.Serializable;
 
 /**
  * Redis中保存的短期记忆消息
  *
  * @author hoho
  */
-public class BotMemoryMessage
+public class AiMemoryMessage implements Serializable
 {
+    private static final long serialVersionUID = 1L;
+
     private String type;
 
     private String text;
 
-    public BotMemoryMessage()
+    public AiMemoryMessage()
     {
     }
 
-    public BotMemoryMessage(String type, String text)
+    public AiMemoryMessage(String type, String text)
     {
         this.type = type;
         this.text = text;

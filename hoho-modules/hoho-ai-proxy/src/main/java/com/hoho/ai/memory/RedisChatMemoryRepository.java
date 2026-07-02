@@ -1,13 +1,12 @@
-package com.hoho.bot.memory;
+package com.hoho.ai.memory;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
-import com.hoho.bot.config.BotProperties;
-import com.hoho.common.core.utils.StringUtils;
+import com.hoho.ai.config.AiProxyProperties;
 import com.hoho.common.redis.service.RedisService;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -27,54 +26,48 @@ public class RedisChatMemoryRepository implements ChatMemoryRepository
 {
     private final RedisService redisService;
 
-    private final BotProperties botProperties;
+    private final AiProxyProperties aiProxyProperties;
 
-    public RedisChatMemoryRepository(RedisService redisService, BotProperties botProperties)
+    public RedisChatMemoryRepository(RedisService redisService, AiProxyProperties aiProxyProperties)
     {
         this.redisService = redisService;
-        this.botProperties = botProperties;
+        this.aiProxyProperties = aiProxyProperties;
     }
 
     @Override
     public List<String> findConversationIds()
     {
         Collection<String> keys = redisService.keys(memoryKey("*"));
-        if (keys == null || keys.isEmpty())
+        if (keys == null)
         {
             return Collections.emptyList();
         }
+        int prefixLength = aiProxyProperties.getMemory().getKeyPrefix().length();
         return keys.stream()
-                .map(key -> key.substring(botProperties.getMemory().getKeyPrefix().length()))
-                .toList();
+                .map(key -> key.substring(prefixLength))
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<Message> findByConversationId(String conversationId)
     {
-        List<BotMemoryMessage> cachedMessages = redisService.getCacheObject(memoryKey(conversationId));
-        if (cachedMessages == null || cachedMessages.isEmpty())
+        List<AiMemoryMessage> cachedMessages = redisService.getCacheObject(memoryKey(conversationId));
+        if (cachedMessages == null)
         {
             return Collections.emptyList();
         }
-        List<Message> messages = new ArrayList<>();
-        for (BotMemoryMessage cachedMessage : cachedMessages)
-        {
-            Message message = toMessage(cachedMessage);
-            if (message != null)
-            {
-                messages.add(message);
-            }
-        }
-        return messages;
+        return cachedMessages.stream()
+                .map(this::toMessage)
+                .collect(Collectors.toList());
     }
 
     @Override
     public void saveAll(String conversationId, List<Message> messages)
     {
-        List<BotMemoryMessage> cachedMessages = messages == null ? Collections.emptyList()
-                : messages.stream().map(this::fromMessage).toList();
+        List<AiMemoryMessage> cachedMessages = messages == null ? Collections.emptyList()
+                : messages.stream().map(this::fromMessage).collect(Collectors.toList());
         redisService.setCacheObject(memoryKey(conversationId), cachedMessages,
-                botProperties.getMemory().getTtlMinutes(), TimeUnit.MINUTES);
+                aiProxyProperties.getMemory().getTtlMinutes(), TimeUnit.MINUTES);
     }
 
     @Override
@@ -85,20 +78,16 @@ public class RedisChatMemoryRepository implements ChatMemoryRepository
 
     private String memoryKey(String conversationId)
     {
-        return botProperties.getMemory().getKeyPrefix() + conversationId;
+        return aiProxyProperties.getMemory().getKeyPrefix() + conversationId;
     }
 
-    private BotMemoryMessage fromMessage(Message message)
+    private AiMemoryMessage fromMessage(Message message)
     {
-        return new BotMemoryMessage(message.getMessageType().getValue(), message.getText());
+        return new AiMemoryMessage(message.getMessageType().getValue(), message.getText());
     }
 
-    private Message toMessage(BotMemoryMessage cachedMessage)
+    private Message toMessage(AiMemoryMessage cachedMessage)
     {
-        if (cachedMessage == null || StringUtils.isBlank(cachedMessage.getText()))
-        {
-            return null;
-        }
         MessageType messageType = MessageType.fromValue(cachedMessage.getType());
         if (MessageType.USER.equals(messageType))
         {
@@ -108,10 +97,6 @@ public class RedisChatMemoryRepository implements ChatMemoryRepository
         {
             return new AssistantMessage(cachedMessage.getText());
         }
-        if (MessageType.SYSTEM.equals(messageType))
-        {
-            return new SystemMessage(cachedMessage.getText());
-        }
-        return null;
+        return new SystemMessage(cachedMessage.getText());
     }
 }

@@ -65,10 +65,23 @@
             <artifactId>hoho-common-core</artifactId>
         </dependency>
 
+        <!-- Hoho Common Redis -->
+        <dependency>
+            <groupId>com.hoho</groupId>
+            <artifactId>hoho-common-redis</artifactId>
+        </dependency>
+
         <!-- Hoho Common Swagger -->
         <dependency>
             <groupId>com.hoho</groupId>
             <artifactId>hoho-common-swagger</artifactId>
+        </dependency>
+
+        <!-- SpringBoot Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
 
     </dependencies>
