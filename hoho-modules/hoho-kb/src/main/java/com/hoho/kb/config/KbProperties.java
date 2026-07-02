@@ -12,16 +12,9 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "hoho.kb")
 public class KbProperties
 {
-    private final AiProxy aiProxy = new AiProxy();
-
     private final Embedding embedding = new Embedding();
 
     private final Search search = new Search();
-
-    public AiProxy getAiProxy()
-    {
-        return aiProxy;
-    }
 
     public Embedding getEmbedding()
     {
@@ -31,21 +24,6 @@ public class KbProperties
     public Search getSearch()
     {
         return search;
-    }
-
-    public static class AiProxy
-    {
-        private String baseUrl = "http://localhost:9205";
-
-        public String getBaseUrl()
-        {
-            return baseUrl;
-        }
-
-        public void setBaseUrl(String baseUrl)
-        {
-            this.baseUrl = baseUrl;
-        }
     }
 
     public static class Embedding

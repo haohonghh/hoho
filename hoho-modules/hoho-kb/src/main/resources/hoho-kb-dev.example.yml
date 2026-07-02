@@ -40,8 +40,6 @@ mybatis:
 
 hoho:
   kb:
-    ai-proxy:
-      base-url: http://localhost:9205
     embedding:
       model: bge-m3
       dimension: 1024

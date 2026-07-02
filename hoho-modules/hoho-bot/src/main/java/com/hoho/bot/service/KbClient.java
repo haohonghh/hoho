@@ -1,17 +1,10 @@
 package com.hoho.bot.service;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import com.hoho.bot.config.BotProperties;
+import com.hoho.bot.api.RemoteKbService;
+import com.hoho.bot.model.request.KbSearchRequest;
 import com.hoho.bot.model.response.KbSearchResponse;
 import com.hoho.common.core.domain.R;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 /**
  * 知识库客户端
@@ -21,20 +14,17 @@ import org.springframework.web.client.RestTemplate;
 @Component
 public class KbClient
 {
-    private final RestTemplate restTemplate;
+    private final RemoteKbService remoteKbService;
 
-    private final BotProperties botProperties;
-
-    public KbClient(RestTemplate restTemplate, BotProperties botProperties)
+    public KbClient(RemoteKbService remoteKbService)
     {
-        this.restTemplate = restTemplate;
-        this.botProperties = botProperties;
+        this.remoteKbService = remoteKbService;
     }
 
     /**
      * 调用知识库服务执行混合检索（通常指向量检索 + 关键词检索的融合）。
      *
-     * <p>底层通过 {@code POST /kb/search/hybrid} 向 kb 服务发送请求，
+     * <p>底层通过 Feign 调用 {@code hoho-kb} 的 {@code POST /kb/search/hybrid} 接口，
      * {@code query} 是用户原始消息文本，{@code topK} 控制返回的参考条目数量。
      *
      * <p>响应同样使用 {@code R<T>} 信封结构。当响应为 null 或业务状态为 error 时，
@@ -51,23 +41,15 @@ public class KbClient
      */
     public KbSearchResponse hybridSearch(String query, int topK)
     {
-        Map<String, Object> request = new HashMap<>();
-        request.put("query", query);
-        request.put("topK", topK);
+        KbSearchRequest request = new KbSearchRequest();
+        request.setQuery(query);
+        request.setTopK(topK);
 
-        ResponseEntity<R<KbSearchResponse>> response = restTemplate.exchange(
-                botProperties.getKb().getBaseUrl() + "/kb/search/hybrid",
-                HttpMethod.POST,
-                new HttpEntity<>(request),
-                new ParameterizedTypeReference<R<KbSearchResponse>>()
-                {
-                });
-
-        R<KbSearchResponse> body = response.getBody();
-        if (body == null || R.isError(body))
+        R<KbSearchResponse> response = remoteKbService.hybridSearch(request);
+        if (response == null || R.isError(response))
         {
-            throw new IllegalStateException(body == null ? "知识库检索无响应" : body.getMsg());
+            throw new IllegalStateException(response == null ? "知识库检索无响应" : response.getMsg());
         }
-        return body.getData();
+        return response.getData();
     }
 }

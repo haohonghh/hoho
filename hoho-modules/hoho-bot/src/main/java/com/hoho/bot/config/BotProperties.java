@@ -12,23 +12,9 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "hoho.bot")
 public class BotProperties
 {
-    private final Kb kb = new Kb();
-
-    private final AiProxy aiProxy = new AiProxy();
-
     private final Answer answer = new Answer();
 
     private final Memory memory = new Memory();
-
-    public Kb getKb()
-    {
-        return kb;
-    }
-
-    public AiProxy getAiProxy()
-    {
-        return aiProxy;
-    }
 
     public Answer getAnswer()
     {
@@ -38,36 +24,6 @@ public class BotProperties
     public Memory getMemory()
     {
         return memory;
-    }
-
-    public static class Kb
-    {
-        private String baseUrl = "http://localhost:9204";
-
-        public String getBaseUrl()
-        {
-            return baseUrl;
-        }
-
-        public void setBaseUrl(String baseUrl)
-        {
-            this.baseUrl = baseUrl;
-        }
-    }
-
-    public static class AiProxy
-    {
-        private String baseUrl = "http://localhost:9205";
-
-        public String getBaseUrl()
-        {
-            return baseUrl;
-        }
-
-        public void setBaseUrl(String baseUrl)
-        {
-            this.baseUrl = baseUrl;
-        }
     }
 
     public static class Answer

@@ -65,6 +65,12 @@
             <artifactId>hoho-common-core</artifactId>
         </dependency>
 
+        <!-- Hoho Common Security -->
+        <dependency>
+            <groupId>com.hoho</groupId>
+            <artifactId>hoho-common-security</artifactId>
+        </dependency>
+
         <!-- Hoho Common Redis -->
         <dependency>
             <groupId>com.hoho</groupId>

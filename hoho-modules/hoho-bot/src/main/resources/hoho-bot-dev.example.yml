@@ -46,10 +46,6 @@ mybatis:
 
 hoho:
   bot:
-    kb:
-      base-url: http://localhost:9204
-    ai-proxy:
-      base-url: http://localhost:9205
     answer:
       direct-min-score: 0.65
       assist-min-score: 0.5

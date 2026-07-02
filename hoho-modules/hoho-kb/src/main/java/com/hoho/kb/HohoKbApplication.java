@@ -1,5 +1,6 @@
 package com.hoho.kb;
 
+import com.hoho.common.security.annotation.EnableRyFeignClients;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -9,6 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  *
  * @author hoho
  */
+@EnableRyFeignClients
 @MapperScan("com.hoho.kb.mapper")
 @SpringBootApplication
 public class HohoKbApplication

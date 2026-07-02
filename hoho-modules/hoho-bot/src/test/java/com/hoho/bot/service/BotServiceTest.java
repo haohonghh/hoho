@@ -2,15 +2,19 @@ package com.hoho.bot.service;
 
 import java.util.List;
 
+import com.hoho.bot.api.RemoteAiProxyService;
+import com.hoho.bot.api.RemoteKbService;
 import com.hoho.bot.config.BotProperties;
 import com.hoho.bot.memory.BotConversationMemoryService;
+import com.hoho.bot.model.request.AiChatRequest;
 import com.hoho.bot.model.request.BotChatRequest;
+import com.hoho.bot.model.request.KbSearchRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.bot.model.response.BotChatResponse;
 import com.hoho.bot.model.response.KbSearchItem;
 import com.hoho.bot.model.response.KbSearchResponse;
+import com.hoho.common.core.domain.R;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.client.RestTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -158,7 +162,7 @@ class BotServiceTest
 
         StubKbClient(BotProperties properties, KbSearchItem item)
         {
-            super(new RestTemplate(), properties);
+            super(new StubRemoteKbService(item));
             this.item = item;
         }
 
@@ -182,7 +186,7 @@ class BotServiceTest
 
         StubAiProxyClient(BotProperties properties)
         {
-            super(new RestTemplate(), properties);
+            super(new StubRemoteAiProxyService());
         }
 
         @Override
@@ -223,6 +227,38 @@ class BotServiceTest
         {
             lastConversationId = conversationId;
             lastAssistantAnswer = response.getAnswer();
+        }
+    }
+
+    private static class StubRemoteKbService implements RemoteKbService
+    {
+        private final KbSearchItem item;
+
+        StubRemoteKbService(KbSearchItem item)
+        {
+            this.item = item;
+        }
+
+        @Override
+        public R<KbSearchResponse> hybridSearch(KbSearchRequest request)
+        {
+            KbSearchResponse response = new KbSearchResponse();
+            response.setQuery(request.getQuery());
+            response.setItems(List.of(item));
+            return R.ok(response);
+        }
+    }
+
+    private static class StubRemoteAiProxyService implements RemoteAiProxyService
+    {
+        @Override
+        public R<AiChatResponse> chat(AiChatRequest request)
+        {
+            AiChatResponse response = new AiChatResponse();
+            response.setConversationId(request.getConversationId());
+            response.setContent("AI 回答");
+            response.setModel("test-model");
+            return R.ok(response);
         }
     }
 

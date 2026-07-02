@@ -1,17 +1,10 @@
 package com.hoho.bot.service;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import com.hoho.bot.config.BotProperties;
+import com.hoho.bot.api.RemoteAiProxyService;
+import com.hoho.bot.model.request.AiChatRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.common.core.domain.R;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 /**
  * AI代理客户端
@@ -21,20 +14,17 @@ import org.springframework.web.client.RestTemplate;
 @Component
 public class AiProxyClient
 {
-    private final RestTemplate restTemplate;
+    private final RemoteAiProxyService remoteAiProxyService;
 
-    private final BotProperties botProperties;
-
-    public AiProxyClient(RestTemplate restTemplate, BotProperties botProperties)
+    public AiProxyClient(RemoteAiProxyService remoteAiProxyService)
     {
-        this.restTemplate = restTemplate;
-        this.botProperties = botProperties;
+        this.remoteAiProxyService = remoteAiProxyService;
     }
 
     /**
      * 调用 AI 代理服务进行单次对话。
      *
-     * <p>底层通过 {@code POST /ai/chat} 向 ai-proxy 服务发送请求，
+     * <p>底层通过 Feign 调用 {@code hoho-ai-proxy} 的 {@code POST /ai/chat} 接口，
      * 请求体会携带会话编号、system prompt、用户消息以及固定的 temperature=0.3
      * （temperature 取值较低以保证回答的确定性与稳定性）。
      *
@@ -53,26 +43,18 @@ public class AiProxyClient
      */
     public AiChatResponse chat(String conversationId, String systemPrompt, String message)
     {
-        Map<String, Object> request = new HashMap<>();
-        request.put("conversationId", conversationId);
-        request.put("systemPrompt", systemPrompt);
-        request.put("message", message);
+        AiChatRequest request = new AiChatRequest();
+        request.setConversationId(conversationId);
+        request.setSystemPrompt(systemPrompt);
+        request.setMessage(message);
         // temperature 设为 0.3，使回答更稳定、更贴近知识库资料，减少随意发挥
-        request.put("temperature", 0.3D);
+        request.setTemperature(0.3D);
 
-        ResponseEntity<R<AiChatResponse>> response = restTemplate.exchange(
-                botProperties.getAiProxy().getBaseUrl() + "/ai/chat",
-                HttpMethod.POST,
-                new HttpEntity<>(request),
-                new ParameterizedTypeReference<R<AiChatResponse>>()
-                {
-                });
-
-        R<AiChatResponse> body = response.getBody();
-        if (body == null || R.isError(body))
+        R<AiChatResponse> response = remoteAiProxyService.chat(request);
+        if (response == null || R.isError(response))
         {
-            throw new IllegalStateException(body == null ? "AI代理对话无响应" : body.getMsg());
+            throw new IllegalStateException(response == null ? "AI代理对话无响应" : response.getMsg());
         }
-        return body.getData();
+        return response.getData();
     }
 }
