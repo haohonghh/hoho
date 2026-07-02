@@ -1,6 +1,7 @@
 package com.hoho.bot.service;
 
 import com.hoho.bot.api.RemoteKbService;
+import com.hoho.bot.model.request.KbQaRequest;
 import com.hoho.bot.model.request.KbSearchRequest;
 import com.hoho.bot.model.response.KbSearchResponse;
 import com.hoho.common.core.domain.R;
@@ -51,5 +52,36 @@ public class KbClient
             throw new IllegalStateException(response == null ? "知识库检索无响应" : response.getMsg());
         }
         return response.getData();
+    }
+
+    /**
+     * 创建并发布问答知识。
+     *
+     * @param categoryId       分类编号
+     * @param question         问题
+     * @param answer           答案
+     * @param similarQuestions 相似问法
+     * @return 新建问答知识编号
+     */
+    public Long createAndPublishQa(Long categoryId, String question, String answer, String similarQuestions)
+    {
+        KbQaRequest request = new KbQaRequest();
+        request.setCategoryId(categoryId);
+        request.setQuestion(question);
+        request.setAnswer(answer);
+        request.setSimilarQuestions(similarQuestions);
+
+        R<Long> createResponse = remoteKbService.createQa(request);
+        if (createResponse == null || R.isError(createResponse))
+        {
+            throw new IllegalStateException(createResponse == null ? "创建问答知识无响应" : createResponse.getMsg());
+        }
+        Long qaId = createResponse.getData();
+        R<Boolean> publishResponse = remoteKbService.publishQa(qaId);
+        if (publishResponse == null || R.isError(publishResponse))
+        {
+            throw new IllegalStateException(publishResponse == null ? "发布问答知识无响应" : publishResponse.getMsg());
+        }
+        return qaId;
     }
 }

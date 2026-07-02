@@ -7,6 +7,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <resultMap type="BotConversation" id="BotConversationResult">
         <id property="id" column="id"/>
         <result property="conversationId" column="conversation_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="userName" column="user_name"/>
         <result property="title" column="title"/>
         <result property="lastMessage" column="last_message"/>
         <result property="messageCount" column="message_count"/>
@@ -15,24 +17,26 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectConversationVo">
-        select id, conversation_id, title, last_message, message_count, create_time, update_time
+        select id, conversation_id, user_id, user_name, title, last_message, message_count, create_time, update_time
         from bot_conversation
     </sql>
 
-    <select id="selectByConversationId" parameterType="String" resultMap="BotConversationResult">
+    <select id="selectByConversationIdAndUserId" resultMap="BotConversationResult">
         <include refid="selectConversationVo"/>
         where conversation_id = #{conversationId}
+          and user_id = #{userId}
         limit 1
     </select>
 
     <select id="selectConversationList" resultMap="BotConversationResult">
         <include refid="selectConversationVo"/>
+        where user_id = #{userId}
         order by update_time desc, id desc
     </select>
 
     <insert id="insertConversation" parameterType="BotConversation" useGeneratedKeys="true" keyProperty="id">
-        insert into bot_conversation(conversation_id, title, last_message, message_count, create_time, update_time)
-        values(#{conversationId}, #{title}, #{lastMessage}, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        insert into bot_conversation(conversation_id, user_id, user_name, title, last_message, message_count, create_time, update_time)
+        values(#{conversationId}, #{userId}, #{userName}, #{title}, #{lastMessage}, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     </insert>
 
     <update id="updateConversationSummary" parameterType="BotConversation">
@@ -41,6 +45,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             message_count = message_count + 1,
             update_time = CURRENT_TIMESTAMP
         where conversation_id = #{conversationId}
+          and user_id = #{userId}
     </update>
 
 </mapper>

@@ -23,10 +23,14 @@ public class ConversationRecordService
 
     private final BotMessageMapper messageMapper;
 
-    public ConversationRecordService(BotConversationMapper conversationMapper, BotMessageMapper messageMapper)
+    private final BotUserContext botUserContext;
+
+    public ConversationRecordService(BotConversationMapper conversationMapper, BotMessageMapper messageMapper,
+            BotUserContext botUserContext)
     {
         this.conversationMapper = conversationMapper;
         this.messageMapper = messageMapper;
+        this.botUserContext = botUserContext;
     }
 
     /**
@@ -46,9 +50,10 @@ public class ConversationRecordService
     @Transactional(rollbackFor = Exception.class)
     public void recordUserMessage(String conversationId, String content)
     {
-        ensureConversation(conversationId, content);
-        insertMessage(conversationId, "user", content, null, null);
-        updateSummary(conversationId, content);
+        BotUserContext.CurrentUser currentUser = botUserContext.currentUser();
+        ensureConversation(conversationId, content, currentUser);
+        insertMessage(conversationId, currentUser.getUserId(), "user", content, null, null);
+        updateSummary(conversationId, currentUser.getUserId(), content);
     }
 
     /**
@@ -67,9 +72,11 @@ public class ConversationRecordService
         {
             return;
         }
-        ensureConversation(conversationId, response.getAnswer());
-        insertMessage(conversationId, "assistant", response.getAnswer(), response.getSource(), response.getScore());
-        updateSummary(conversationId, response.getAnswer());
+        BotUserContext.CurrentUser currentUser = botUserContext.currentUser();
+        ensureConversation(conversationId, response.getAnswer(), currentUser);
+        insertMessage(conversationId, currentUser.getUserId(), "assistant", response.getAnswer(), response.getSource(),
+                response.getScore());
+        updateSummary(conversationId, currentUser.getUserId(), response.getAnswer());
     }
 
     /**
@@ -82,7 +89,7 @@ public class ConversationRecordService
      */
     public List<BotConversation> listConversations()
     {
-        return conversationMapper.selectConversationList();
+        return conversationMapper.selectConversationList(botUserContext.currentUser().getUserId());
     }
 
     /**
@@ -98,7 +105,7 @@ public class ConversationRecordService
         {
             throw new IllegalArgumentException("会话编号不能为空");
         }
-        return messageMapper.selectMessageList(conversationId);
+        return messageMapper.selectMessageList(conversationId, botUserContext.currentUser().getUserId());
     }
 
     /**
@@ -114,15 +121,18 @@ public class ConversationRecordService
      * @param conversationId 会话编号
      * @param title          用于生成会话标题的内容（如首条消息）
      */
-    private void ensureConversation(String conversationId, String title)
+    private void ensureConversation(String conversationId, String title, BotUserContext.CurrentUser currentUser)
     {
-        BotConversation existing = conversationMapper.selectByConversationId(conversationId);
+        BotConversation existing = conversationMapper.selectByConversationIdAndUserId(conversationId,
+                currentUser.getUserId());
         if (existing != null)
         {
             return;
         }
         BotConversation conversation = new BotConversation();
         conversation.setConversationId(conversationId);
+        conversation.setUserId(currentUser.getUserId());
+        conversation.setUserName(currentUser.getUserName());
         conversation.setTitle(buildTitle(title));
         conversation.setLastMessage("");
         conversationMapper.insertConversation(conversation);
@@ -138,10 +148,12 @@ public class ConversationRecordService
      *                       （用户消息时为 null）
      * @param score          知识库相似度分数（用户消息及纯 AI 兜底时为 null）
      */
-    private void insertMessage(String conversationId, String role, String content, String source, Double score)
+    private void insertMessage(String conversationId, Long userId, String role, String content, String source,
+            Double score)
     {
         BotMessage message = new BotMessage();
         message.setConversationId(conversationId);
+        message.setUserId(userId);
         message.setRole(role);
         message.setContent(content);
         message.setSource(source);
@@ -157,10 +169,11 @@ public class ConversationRecordService
      * @param conversationId 会话编号
      * @param lastMessage    最近一条消息的正文
      */
-    private void updateSummary(String conversationId, String lastMessage)
+    private void updateSummary(String conversationId, Long userId, String lastMessage)
     {
         BotConversation conversation = new BotConversation();
         conversation.setConversationId(conversationId);
+        conversation.setUserId(userId);
         conversation.setLastMessage(lastMessage);
         conversationMapper.updateConversationSummary(conversation);
     }

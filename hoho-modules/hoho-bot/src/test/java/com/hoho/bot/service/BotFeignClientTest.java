@@ -6,6 +6,7 @@ import com.hoho.bot.api.RemoteAiProxyService;
 import com.hoho.bot.api.RemoteKbService;
 import com.hoho.bot.model.request.AiChatRequest;
 import com.hoho.bot.model.request.AiMemoryAppendRequest;
+import com.hoho.bot.model.request.KbQaRequest;
 import com.hoho.bot.model.request.KbSearchRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.bot.model.response.KbSearchItem;
@@ -72,11 +73,30 @@ class BotFeignClientTest
         assertEquals("知识库检索失败", exception.getMessage());
     }
 
+    @Test
+    void 知识库客户端可以创建并发布问答知识()
+    {
+        StubRemoteKbService remoteKbService = new StubRemoteKbService();
+        KbClient kbClient = new KbClient(remoteKbService);
+
+        Long qaId = kbClient.createAndPublishQa(2L, "电脑无法联网怎么办？", "先检查 DNS 配置。", null);
+
+        assertEquals(7L, qaId);
+        assertEquals(2L, remoteKbService.lastQaRequest.getCategoryId());
+        assertEquals("电脑无法联网怎么办？", remoteKbService.lastQaRequest.getQuestion());
+        assertEquals("先检查 DNS 配置。", remoteKbService.lastQaRequest.getAnswer());
+        assertEquals(7L, remoteKbService.lastPublishId);
+    }
+
     private static class StubRemoteKbService implements RemoteKbService
     {
         private KbSearchRequest lastRequest;
 
         private boolean fail;
+
+        private KbQaRequest lastQaRequest;
+
+        private Long lastPublishId;
 
         @Override
         public R<KbSearchResponse> hybridSearch(KbSearchRequest request)
@@ -93,6 +113,20 @@ class BotFeignClientTest
             response.setQuery(request.getQuery());
             response.setItems(List.of(item));
             return R.ok(response);
+        }
+
+        @Override
+        public R<Long> createQa(KbQaRequest request)
+        {
+            lastQaRequest = request;
+            return R.ok(7L);
+        }
+
+        @Override
+        public R<Boolean> publishQa(Long id)
+        {
+            lastPublishId = id;
+            return R.ok(true);
         }
     }
 

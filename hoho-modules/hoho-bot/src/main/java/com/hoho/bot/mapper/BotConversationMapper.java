@@ -3,6 +3,7 @@ package com.hoho.bot.mapper;
 import java.util.List;
 
 import com.hoho.bot.domain.BotConversation;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 机器人会话数据层
@@ -11,9 +12,10 @@ import com.hoho.bot.domain.BotConversation;
  */
 public interface BotConversationMapper
 {
-    BotConversation selectByConversationId(String conversationId);
+    BotConversation selectByConversationIdAndUserId(@Param("conversationId") String conversationId,
+            @Param("userId") Long userId);
 
-    List<BotConversation> selectConversationList();
+    List<BotConversation> selectConversationList(@Param("userId") Long userId);
 
     int insertConversation(BotConversation conversation);
 

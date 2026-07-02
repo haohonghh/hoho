@@ -7,6 +7,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <resultMap type="BotMessage" id="BotMessageResult">
         <id property="id" column="id"/>
         <result property="conversationId" column="conversation_id"/>
+        <result property="userId" column="user_id"/>
         <result property="role" column="role"/>
         <result property="content" column="content"/>
         <result property="source" column="source"/>
@@ -14,15 +15,36 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="createTime" column="create_time"/>
     </resultMap>
 
+    <sql id="selectMessageVo">
+        select id, conversation_id, user_id, role, content, source, score, create_time
+        from bot_message
+    </sql>
+
     <insert id="insertMessage" parameterType="BotMessage" useGeneratedKeys="true" keyProperty="id">
-        insert into bot_message(conversation_id, role, content, source, score, create_time)
-        values(#{conversationId}, #{role}, #{content}, #{source}, #{score}, CURRENT_TIMESTAMP)
+        insert into bot_message(conversation_id, user_id, role, content, source, score, create_time)
+        values(#{conversationId}, #{userId}, #{role}, #{content}, #{source}, #{score}, CURRENT_TIMESTAMP)
     </insert>
 
-    <select id="selectMessageList" parameterType="String" resultMap="BotMessageResult">
-        select id, conversation_id, role, content, source, score, create_time
-        from bot_message
+    <select id="selectMessageById" resultMap="BotMessageResult">
+        <include refid="selectMessageVo"/>
+        where id = #{id}
+        limit 1
+    </select>
+
+    <select id="selectPreviousUserMessage" resultMap="BotMessageResult">
+        <include refid="selectMessageVo"/>
         where conversation_id = #{conversationId}
+          and user_id = #{userId}
+          and role = 'user'
+          and id &lt; #{beforeMessageId}
+        order by id desc
+        limit 1
+    </select>
+
+    <select id="selectMessageList" resultMap="BotMessageResult">
+        <include refid="selectMessageVo"/>
+        where conversation_id = #{conversationId}
+          and user_id = #{userId}
         order by id asc
     </select>
 

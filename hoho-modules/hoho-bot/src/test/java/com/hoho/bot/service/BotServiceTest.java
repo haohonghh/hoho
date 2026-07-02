@@ -8,6 +8,7 @@ import com.hoho.bot.config.BotProperties;
 import com.hoho.bot.model.request.AiChatRequest;
 import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.request.BotChatRequest;
+import com.hoho.bot.model.request.KbQaRequest;
 import com.hoho.bot.model.request.KbSearchRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.bot.model.response.BotChatResponse;
@@ -218,7 +219,7 @@ class BotServiceTest
 
         StubConversationRecordService()
         {
-            super(null, null);
+            super(null, null, new BotUserContext());
         }
 
         @Override
@@ -252,6 +253,18 @@ class BotServiceTest
             response.setQuery(request.getQuery());
             response.setItems(List.of(item));
             return R.ok(response);
+        }
+
+        @Override
+        public R<Long> createQa(KbQaRequest request)
+        {
+            return R.ok(1L);
+        }
+
+        @Override
+        public R<Boolean> publishQa(Long id)
+        {
+            return R.ok(true);
         }
     }
 

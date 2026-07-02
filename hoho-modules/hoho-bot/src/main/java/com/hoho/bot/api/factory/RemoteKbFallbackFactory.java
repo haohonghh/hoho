@@ -1,6 +1,7 @@
 package com.hoho.bot.api.factory;
 
 import com.hoho.bot.api.RemoteKbService;
+import com.hoho.bot.model.request.KbQaRequest;
 import com.hoho.bot.model.request.KbSearchRequest;
 import com.hoho.bot.model.response.KbSearchResponse;
 import com.hoho.common.core.domain.R;
@@ -29,6 +30,18 @@ public class RemoteKbFallbackFactory implements FallbackFactory<RemoteKbService>
             public R<KbSearchResponse> hybridSearch(KbSearchRequest request)
             {
                 return R.fail("知识库检索失败:" + throwable.getMessage());
+            }
+
+            @Override
+            public R<Long> createQa(KbQaRequest request)
+            {
+                return R.fail("创建问答知识失败:" + throwable.getMessage());
+            }
+
+            @Override
+            public R<Boolean> publishQa(Long id)
+            {
+                return R.fail("发布问答知识失败:" + throwable.getMessage());
             }
         };
     }

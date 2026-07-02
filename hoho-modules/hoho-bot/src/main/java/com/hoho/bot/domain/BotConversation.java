@@ -13,6 +13,10 @@ public class BotConversation
 
     private String conversationId;
 
+    private Long userId;
+
+    private String userName;
+
     private String title;
 
     private String lastMessage;
@@ -41,6 +45,26 @@ public class BotConversation
     public void setConversationId(String conversationId)
     {
         this.conversationId = conversationId;
+    }
+
+    public Long getUserId()
+    {
+        return userId;
+    }
+
+    public void setUserId(Long userId)
+    {
+        this.userId = userId;
+    }
+
+    public String getUserName()
+    {
+        return userName;
+    }
+
+    public void setUserName(String userName)
+    {
+        this.userName = userName;
     }
 
     public String getTitle()
