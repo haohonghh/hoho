@@ -3,5 +3,17 @@ FROM nacos/nacos-server:v3.0.2
 # author
 MAINTAINER ruoyi
 
+# 修复 Nacos 3.0.2 控制台静态资源嵌套 JAR 无法加载的问题
+# Alpine Linux 使用 apk，unzip 已内置，只需安装 zip
+RUN apk add --no-cache zip && \
+    cd /home/nacos/target && \
+    mkdir -p /tmp/nacos-fix && \
+    cd /tmp/nacos-fix && \
+    unzip -o /home/nacos/target/nacos-server.jar 'BOOT-INF/lib/nacos-console-3.0.2.jar' && \
+    unzip -o BOOT-INF/lib/nacos-console-3.0.2.jar 'static/*' && \
+    zip -r /home/nacos/target/nacos-server.jar static/ && \
+    rm -rf /tmp/nacos-fix && \
+    apk del zip
+
 # 复制conf文件到路径
 COPY ./conf/application.properties /home/nacos/conf/application.properties

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>com.hoho</groupId>
+        <artifactId>hoho</artifactId>
+        <version>3.6.8</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <modules>
+        <module>hoho-system</module>
+        <module>hoho-gen</module>
+        <module>hoho-job</module>
+        <module>hoho-file</module>
+        <module>hoho-ai-proxy</module>
+        <module>hoho-kb</module>
+        <module>hoho-bot</module>
+    </modules>
+
+    <artifactId>hoho-modules</artifactId>
+    <packaging>pom</packaging>
+
+    <description>
+        hoho-modules业务模块
+    </description>
+
+</project>

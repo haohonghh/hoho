@@ -1,0 +1,2 @@
+com.hoho.common.log.service.AsyncLogService
+com.hoho.common.log.aspect.LogAspect

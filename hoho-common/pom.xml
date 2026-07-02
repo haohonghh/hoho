@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>com.hoho</groupId>
+        <artifactId>hoho</artifactId>
+        <version>3.6.8</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <modules>
+        <module>hoho-common-log</module>
+        <module>hoho-common-core</module>
+        <module>hoho-common-redis</module>
+        <module>hoho-common-seata</module>
+        <module>hoho-common-swagger</module>
+        <module>hoho-common-security</module>
+        <module>hoho-common-sensitive</module>
+        <module>hoho-common-datascope</module>
+        <module>hoho-common-datasource</module>
+    </modules>
+
+    <artifactId>hoho-common</artifactId>
+    <packaging>pom</packaging>
+
+    <description>
+        hoho-common通用模块
+    </description>
+
+</project>

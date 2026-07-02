@@ -1,0 +1,60 @@
+# Copy this file content to Nacos:
+# Data ID: hoho-kb-dev.yml
+# Group: DEFAULT_GROUP
+
+spring:
+  datasource:
+    druid:
+      stat-view-servlet:
+        enabled: true
+        loginUsername: hoho
+        loginPassword: 123456
+    dynamic:
+      druid:
+        initial-size: 5
+        min-idle: 2
+        maxActive: 10
+        maxWait: 60000
+        connectTimeout: 30000
+        socketTimeout: 60000
+        timeBetweenEvictionRunsMillis: 60000
+        minEvictableIdleTimeMillis: 300000
+        validationQuery: SELECT 1
+        testWhileIdle: true
+        testOnBorrow: false
+        testOnReturn: false
+        poolPreparedStatements: true
+        maxPoolPreparedStatementPerConnectionSize: 20
+        filters: stat,slf4j
+        connectionProperties: druid.stat.mergeSql\=true;druid.stat.slowSqlMillis\=5000
+      datasource:
+        master:
+          driver-class-name: org.postgresql.Driver
+          url: jdbc:postgresql://localhost:5432/hoho_kb
+          username: postgres
+          password: postgres
+
+mybatis:
+  typeAliasesPackage: com.hoho.kb.domain
+  mapperLocations: classpath:mapper/**/*.xml
+
+hoho:
+  kb:
+    ai-proxy:
+      base-url: http://localhost:9205
+    embedding:
+      model: bge-m3
+      dimension: 1024
+    search:
+      default-top-k: 5
+
+springdoc:
+  gatewayUrl: http://localhost:8080/${spring.application.name}
+  api-docs:
+    enabled: true
+  info:
+    title: 知识库接口文档
+    description: 知识库接口描述
+    contact:
+      name: hoho
+      url: https://hoho.vip

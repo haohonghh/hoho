@@ -4,10 +4,10 @@ FROM redis
 MAINTAINER ruoyi
 
 # 挂载目录
-VOLUME /home/ruoyi/redis
+VOLUME /redis
 # 创建目录
-RUN mkdir -p /home/ruoyi/redis
+RUN mkdir -p /redis
 # 指定路径
-WORKDIR /home/ruoyi/redis
+WORKDIR /redis
 # 复制conf文件到路径
-COPY ./conf/redis.conf /home/ruoyi/redis/redis.conf
+COPY ./conf/redis.conf /redis/redis.conf

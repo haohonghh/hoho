@@ -1,0 +1,62 @@
+# Copy this file content to Nacos:
+# Data ID: hoho-bot-dev.yml
+# Group: DEFAULT_GROUP
+
+spring:
+  datasource:
+    druid:
+      stat-view-servlet:
+        enabled: true
+        loginUsername: hoho
+        loginPassword: 123456
+    dynamic:
+      druid:
+        initial-size: 5
+        min-idle: 2
+        maxActive: 10
+        maxWait: 60000
+        connectTimeout: 30000
+        socketTimeout: 60000
+        timeBetweenEvictionRunsMillis: 60000
+        minEvictableIdleTimeMillis: 300000
+        validationQuery: SELECT 1
+        testWhileIdle: true
+        testOnBorrow: false
+        testOnReturn: false
+        poolPreparedStatements: true
+        maxPoolPreparedStatementPerConnectionSize: 20
+        filters: stat,slf4j
+        connectionProperties: druid.stat.mergeSql\=true;druid.stat.slowSqlMillis\=5000
+      datasource:
+        master:
+          driver-class-name: org.postgresql.Driver
+          url: jdbc:postgresql://localhost:5432/hoho_kb
+          username: postgres
+          password: postgres
+
+mybatis:
+  typeAliasesPackage: com.hoho.bot.domain
+  mapperLocations: classpath:mapper/**/*.xml
+
+hoho:
+  bot:
+    kb:
+      base-url: http://localhost:9204
+    ai-proxy:
+      base-url: http://localhost:9205
+    answer:
+      direct-min-score: 0.65
+      assist-min-score: 0.5
+      top-k: 3
+      fallback-system-prompt: 你是企业IT运维智能客服助手。知识库未命中时，请给出简洁、谨慎、可执行的建议，并提醒用户必要时联系人工运维。
+
+springdoc:
+  gatewayUrl: http://localhost:8880/${spring.application.name}
+  api-docs:
+    enabled: true
+  info:
+    title: 文本机器人接口文档
+    description: 文本机器人接口描述
+    contact:
+      name: hoho
+      url: https://hoho.vip

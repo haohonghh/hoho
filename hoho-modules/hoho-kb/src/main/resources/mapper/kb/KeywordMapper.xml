@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hoho.kb.mapper.KeywordMapper">
+
+    <select id="searchByKeyword" resultType="com.hoho.kb.model.response.SearchItem">
+        select id as "qaId",
+               question,
+               answer,
+               case
+                   when question ILIKE #{keyword} ESCAPE '\' then 1.0
+                   when similar_questions ILIKE #{keyword} ESCAPE '\' then 0.9
+                   when answer ILIKE #{keyword} ESCAPE '\' then 0.7
+                   else 0.5
+               end as score,
+               'keyword' as source
+          from kb_qa
+         where status = 'published'
+           and (
+                question ILIKE #{keyword} ESCAPE '\'
+                or coalesce(similar_questions, '') ILIKE #{keyword} ESCAPE '\'
+                or answer ILIKE #{keyword} ESCAPE '\'
+           )
+         order by score desc, id desc
+         limit #{topK}
+    </select>
+
+</mapper>

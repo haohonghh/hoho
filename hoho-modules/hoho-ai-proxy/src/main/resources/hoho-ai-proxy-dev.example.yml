@@ -1,0 +1,31 @@
+# Copy this file content to Nacos:
+# Data ID: hoho-ai-proxy-dev.yml
+# Group: DEFAULT_GROUP
+
+spring:
+  ai:
+    model:
+      chat: dashscope
+      embedding: ollama
+    dashscope:
+      api-key: ${AI_DASHSCOPE_API_KEY}
+      chat:
+        enabled: true
+        options:
+          model: qwen-plus
+      embedding:
+        enabled: false
+    ollama:
+      base-url: http://localhost:11434
+      embedding:
+        model: bge-m3
+        options:
+          model: bge-m3
+
+hoho:
+  ai:
+    chat:
+      default-system-prompt: 你是企业IT运维智能客服助手，回答要准确、简洁、可执行。
+    embedding:
+      dimension: 1024
+      batch-size: 16

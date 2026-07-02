@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hoho.bot.mapper.BotMessageMapper">
+
+    <resultMap type="BotMessage" id="BotMessageResult">
+        <id property="id" column="id"/>
+        <result property="conversationId" column="conversation_id"/>
+        <result property="role" column="role"/>
+        <result property="content" column="content"/>
+        <result property="source" column="source"/>
+        <result property="score" column="score"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <insert id="insertMessage" parameterType="BotMessage" useGeneratedKeys="true" keyProperty="id">
+        insert into bot_message(conversation_id, role, content, source, score, create_time)
+        values(#{conversationId}, #{role}, #{content}, #{source}, #{score}, CURRENT_TIMESTAMP)
+    </insert>
+
+    <select id="selectMessageList" parameterType="String" resultMap="BotMessageResult">
+        select id, conversation_id, role, content, source, score, create_time
+        from bot_message
+        where conversation_id = #{conversationId}
+        order by id asc
+    </select>
+
+</mapper>

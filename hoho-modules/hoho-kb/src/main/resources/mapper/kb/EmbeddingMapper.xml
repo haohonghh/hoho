@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hoho.kb.mapper.EmbeddingMapper">
+
+    <delete id="deleteByQaId" parameterType="Long">
+        delete from kb_embedding where qa_id = #{qaId}
+    </delete>
+
+    <insert id="insertVector">
+        insert into kb_embedding(qa_id, content_type, content, embedding, model)
+        values(#{qaId}, #{contentType}, #{content}, #{vector}::vector, #{model})
+    </insert>
+
+    <select id="searchByVector" resultType="com.hoho.kb.model.response.SearchItem">
+        select q.id as "qaId",
+               q.question,
+               q.answer,
+               greatest(0, 1 - (e.embedding &lt;=&gt; #{vector}::vector)) as score,
+               'vector' as source
+          from kb_embedding e
+          join kb_qa q on q.id = e.qa_id
+         where q.status = 'published'
+         order by e.embedding &lt;=&gt; #{vector}::vector
+         limit #{topK}
+    </select>
+
+</mapper>
