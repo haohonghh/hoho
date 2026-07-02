@@ -38,4 +38,4 @@ hoho:
     memory:
       max-messages: 10
       ttl-minutes: 120
-      key-prefix: hoho:ai:memory:
+      key-prefix: "hoho:ai:memory:"

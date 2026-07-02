@@ -47,7 +47,7 @@ hoho:
       default-top-k: 5
 
 springdoc:
-  gatewayUrl: http://localhost:8080/${spring.application.name}
+  gatewayUrl: http://localhost:8880/${spring.application.name}
   api-docs:
     enabled: true
   info:

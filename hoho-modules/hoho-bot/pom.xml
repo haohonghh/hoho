@@ -71,6 +71,19 @@
             <artifactId>hoho-common-security</artifactId>
         </dependency>
 
+        <!-- Spring AI Alibaba Studio 调试页面 -->
+        <dependency>
+            <groupId>com.alibaba.cloud.ai</groupId>
+            <artifactId>spring-ai-alibaba-studio</artifactId>
+            <version>${spring-ai-alibaba.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.alibaba.cloud.ai</groupId>
+                    <artifactId>spring-ai-alibaba-starter-dashscope</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- Hoho Common Swagger -->
         <dependency>
             <groupId>com.hoho</groupId>

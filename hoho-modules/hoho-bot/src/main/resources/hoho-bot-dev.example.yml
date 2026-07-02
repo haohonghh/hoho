@@ -1,6 +1,7 @@
 # Copy this file content to Nacos:
 # Data ID: hoho-bot-dev.yml
 # Group: DEFAULT_GROUP
+# Studio 调试页面: http://localhost:9201/chatui/index.html
 
 spring:
   datasource:
