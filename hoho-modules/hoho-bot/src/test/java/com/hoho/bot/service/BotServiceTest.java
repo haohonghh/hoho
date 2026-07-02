@@ -3,6 +3,7 @@ package com.hoho.bot.service;
 import java.util.List;
 
 import com.hoho.bot.config.BotProperties;
+import com.hoho.bot.memory.BotConversationMemoryService;
 import com.hoho.bot.model.request.BotChatRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.bot.model.response.BotChatResponse;
@@ -24,7 +25,8 @@ class BotServiceTest
         StubKbClient kbClient = new StubKbClient(properties, item(1L, "电脑无法联网怎么办？", "检查网线和 Wi-Fi。", 0.82D));
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
-        BotService botService = new BotService(kbClient, aiProxyClient, properties, conversationRecordService);
+        StubBotConversationMemoryService memoryService = new StubBotConversationMemoryService();
+        BotService botService = new BotService(kbClient, aiProxyClient, properties, conversationRecordService, memoryService);
 
         BotChatResponse response = botService.chat(request());
 
@@ -34,6 +36,8 @@ class BotServiceTest
         assertEquals(0, aiProxyClient.chatCount);
         assertEquals("电脑上不了网怎么处理？", conversationRecordService.lastUserMessage);
         assertEquals("检查网线和 Wi-Fi。", conversationRecordService.lastAssistantAnswer);
+        assertEquals("电脑上不了网怎么处理？", memoryService.lastUserMessage);
+        assertEquals("检查网线和 Wi-Fi。", memoryService.lastAssistantMessage);
     }
 
     @Test
@@ -44,7 +48,8 @@ class BotServiceTest
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         aiProxyClient.responseContent = "请先检查网线和 Wi-Fi，再确认 IP 与 DNS。";
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
-        BotService botService = new BotService(kbClient, aiProxyClient, properties, conversationRecordService);
+        StubBotConversationMemoryService memoryService = new StubBotConversationMemoryService();
+        BotService botService = new BotService(kbClient, aiProxyClient, properties, conversationRecordService, memoryService);
 
         BotChatResponse response = botService.chat(request());
 
@@ -55,6 +60,7 @@ class BotServiceTest
         assertTrue(aiProxyClient.lastSystemPrompt.contains("电脑无法联网怎么办？"));
         assertTrue(aiProxyClient.lastSystemPrompt.contains("检查网线和 Wi-Fi。"));
         assertEquals("请先检查网线和 Wi-Fi，再确认 IP 与 DNS。", conversationRecordService.lastAssistantAnswer);
+        assertEquals("请先检查网线和 Wi-Fi，再确认 IP 与 DNS。", memoryService.lastAssistantMessage);
     }
 
     @Test
@@ -65,7 +71,8 @@ class BotServiceTest
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         aiProxyClient.responseContent = "请提供更多问题现象。";
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
-        BotService botService = new BotService(kbClient, aiProxyClient, properties, conversationRecordService);
+        StubBotConversationMemoryService memoryService = new StubBotConversationMemoryService();
+        BotService botService = new BotService(kbClient, aiProxyClient, properties, conversationRecordService, memoryService);
 
         BotChatResponse response = botService.chat(request());
 
@@ -78,13 +85,36 @@ class BotServiceTest
     }
 
     @Test
+    void 调用Ai时将短期记忆拼入系统提示词并记录本轮消息()
+    {
+        BotProperties properties = botProperties();
+        StubKbClient kbClient = new StubKbClient(properties, item(1L, "打印机问题", "重启打印机。", 0.2D));
+        StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
+        aiProxyClient.responseContent = "可以继续检查网关配置。";
+        StubConversationRecordService conversationRecordService = new StubConversationRecordService();
+        StubBotConversationMemoryService memoryService = new StubBotConversationMemoryService();
+        memoryService.memoryPrompt = "用户：上一轮问题\n助手：上一轮回答";
+        BotService botService = new BotService(kbClient, aiProxyClient, properties, conversationRecordService, memoryService);
+
+        BotChatResponse response = botService.chat(request());
+
+        assertEquals("ai", response.getSource());
+        assertTrue(aiProxyClient.lastSystemPrompt.contains(properties.getAnswer().getFallbackSystemPrompt()));
+        assertTrue(aiProxyClient.lastSystemPrompt.contains("用户：上一轮问题"));
+        assertTrue(aiProxyClient.lastSystemPrompt.contains("助手：上一轮回答"));
+        assertEquals("电脑上不了网怎么处理？", memoryService.lastUserMessage);
+        assertEquals("可以继续检查网关配置。", memoryService.lastAssistantMessage);
+    }
+
+    @Test
     void 未传会话编号时自动生成会话编号并记录消息()
     {
         BotProperties properties = botProperties();
         StubKbClient kbClient = new StubKbClient(properties, item(1L, "电脑无法联网怎么办？", "检查网线和 Wi-Fi。", 0.82D));
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
-        BotService botService = new BotService(kbClient, aiProxyClient, properties, conversationRecordService);
+        StubBotConversationMemoryService memoryService = new StubBotConversationMemoryService();
+        BotService botService = new BotService(kbClient, aiProxyClient, properties, conversationRecordService, memoryService);
         BotChatRequest request = request();
         request.setConversationId(null);
 
@@ -193,6 +223,43 @@ class BotServiceTest
         {
             lastConversationId = conversationId;
             lastAssistantAnswer = response.getAnswer();
+        }
+    }
+
+    private static class StubBotConversationMemoryService extends BotConversationMemoryService
+    {
+        private String memoryPrompt = "";
+
+        private String lastConversationId;
+
+        private String lastUserMessage;
+
+        private String lastAssistantMessage;
+
+        StubBotConversationMemoryService()
+        {
+            super(null, new BotProperties());
+        }
+
+        @Override
+        public String buildMemoryPrompt(String conversationId)
+        {
+            lastConversationId = conversationId;
+            return memoryPrompt;
+        }
+
+        @Override
+        public void recordUserMessage(String conversationId, String message)
+        {
+            lastConversationId = conversationId;
+            lastUserMessage = message;
+        }
+
+        @Override
+        public void recordAssistantMessage(String conversationId, String message)
+        {
+            lastConversationId = conversationId;
+            lastAssistantMessage = message;
         }
     }
 }

@@ -3,6 +3,12 @@
 # Group: DEFAULT_GROUP
 
 spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 0
+      timeout: 10s
   datasource:
     druid:
       stat-view-servlet:
@@ -49,6 +55,11 @@ hoho:
       assist-min-score: 0.5
       top-k: 3
       fallback-system-prompt: 你是企业IT运维智能客服助手。知识库未命中时，请给出简洁、谨慎、可执行的建议，并提醒用户必要时联系人工运维。
+    memory:
+      enabled: true
+      max-messages: 10
+      ttl-minutes: 120
+      key-prefix: hoho:bot:memory:
 
 springdoc:
   gatewayUrl: http://localhost:8880/${spring.application.name}
