@@ -7,6 +7,8 @@ import com.hoho.common.core.utils.StringUtils;
 import com.hoho.kb.api.RemoteAiProxyService;
 import com.hoho.kb.model.request.AiEmbeddingRequest;
 import com.hoho.kb.model.response.AiEmbeddingResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,6 +19,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class AiProxyClient
 {
+    private static final Logger log = LoggerFactory.getLogger(AiProxyClient.class);
+
     private final RemoteAiProxyService remoteAiProxyService;
 
     public AiProxyClient(RemoteAiProxyService remoteAiProxyService)
@@ -47,11 +51,18 @@ public class AiProxyClient
         AiEmbeddingRequest request = new AiEmbeddingRequest();
         request.setText(text);
 
+        long start = System.currentTimeMillis();
+        log.info("调用AI代理向量化开始 textLength={}", text.length());
         R<AiEmbeddingResponse> response = remoteAiProxyService.embedding(request);
         if (response == null || R.isError(response) || response.getData() == null)
         {
+            log.warn("调用AI代理向量化失败 textLength={}, cost={}ms, reason={}", text.length(),
+                    System.currentTimeMillis() - start, response == null ? "无响应" : response.getMsg());
             throw new IllegalStateException(response == null ? "AI代理向量化无响应" : response.getMsg());
         }
+        log.info("调用AI代理向量化完成 textLength={}, dimension={}, cost={}ms", text.length(),
+                response.getData().getVector() == null ? 0 : response.getData().getVector().size(),
+                System.currentTimeMillis() - start);
         return response.getData().getVector();
     }
 }

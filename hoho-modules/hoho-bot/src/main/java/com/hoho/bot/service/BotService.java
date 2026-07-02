@@ -12,6 +12,8 @@ import com.hoho.bot.model.response.BotChatResponse;
 import com.hoho.bot.model.response.KbSearchItem;
 import com.hoho.bot.model.response.KbSearchResponse;
 import com.hoho.common.core.utils.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -22,6 +24,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class BotService
 {
+    private static final Logger log = LoggerFactory.getLogger(BotService.class);
+
     private final KbClient kbClient;
 
     private final AiProxyClient aiProxyClient;
@@ -65,6 +69,9 @@ public class BotService
         validate(request);
 
         String conversationId = resolveConversationId(request.getConversationId());
+        long start = System.currentTimeMillis();
+        log.info("Bot对话开始 conversationId={}, messageLength={}, requestTopK={}", conversationId,
+                request.getMessage().length(), request.getTopK());
         // 先将用户消息持久化（同时保证会话存在）
         conversationRecordService.recordUserMessage(conversationId, request.getMessage());
 
@@ -83,7 +90,7 @@ public class BotService
         // 路径一：分数达到直接回答阈值，直接返回知识库答案，无需调用 AI
         if (best != null && best.getScore() != null && best.getScore() >= botProperties.getAnswer().getDirectMinScore())
         {
-            return recordAndReturn(fromKb(conversationId, best, references), request.getMessage(), true);
+            return recordAndReturn(fromKb(conversationId, best, references), request.getMessage(), true, start);
         }
 
         // 路径二：分数达到辅助阈值，将知识库资料注入 system prompt，调用 AI 生成回答
@@ -93,7 +100,8 @@ public class BotService
                     conversationId,
                     buildAssistSystemPrompt(best),
                     request.getMessage());
-            return recordAndReturn(fromAiWithKb(conversationId, aiResponse, best, references), request.getMessage(), false);
+            return recordAndReturn(fromAiWithKb(conversationId, aiResponse, best, references), request.getMessage(), false,
+                    start);
         }
 
         // 路径三：知识库未命中，仅用兜底 system prompt 让 AI 生成回答
@@ -101,7 +109,7 @@ public class BotService
                 conversationId,
                 botProperties.getAnswer().getFallbackSystemPrompt(),
                 request.getMessage());
-        return recordAndReturn(fromAi(conversationId, aiResponse, references), request.getMessage(), false);
+        return recordAndReturn(fromAi(conversationId, aiResponse, references), request.getMessage(), false, start);
     }
 
     /**
@@ -180,13 +188,17 @@ public class BotService
      * @param response 已经填充好的响应对象
      * @return 同一个 response 对象（用于方法链式返回）
      */
-    private BotChatResponse recordAndReturn(BotChatResponse response, String userMessage, boolean appendMemory)
+    private BotChatResponse recordAndReturn(BotChatResponse response, String userMessage, boolean appendMemory, long start)
     {
         conversationRecordService.recordAssistantMessage(response.getConversationId(), response);
         if (appendMemory)
         {
             aiProxyClient.appendMemory(response.getConversationId(), userMessage, response.getAnswer());
         }
+        log.info("Bot对话完成 conversationId={}, source={}, score={}, referenceCount={}, appendMemory={}, cost={}ms",
+                response.getConversationId(), response.getSource(), response.getScore(),
+                response.getReferences() == null ? 0 : response.getReferences().size(), appendMemory,
+                System.currentTimeMillis() - start);
         return response;
     }
 

@@ -5,6 +5,8 @@ import com.hoho.bot.model.request.AiChatRequest;
 import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.common.core.domain.R;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,6 +17,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class AiProxyClient
 {
+    private static final Logger log = LoggerFactory.getLogger(AiProxyClient.class);
+
     private final RemoteAiProxyService remoteAiProxyService;
 
     public AiProxyClient(RemoteAiProxyService remoteAiProxyService)
@@ -51,11 +55,20 @@ public class AiProxyClient
         // temperature 设为 0.3，使回答更稳定、更贴近知识库资料，减少随意发挥
         request.setTemperature(0.3D);
 
+        long start = System.currentTimeMillis();
+        log.info("调用AI代理对话开始 conversationId={}, messageLength={}, systemPromptLength={}", conversationId,
+                length(message), length(systemPrompt));
         R<AiChatResponse> response = remoteAiProxyService.chat(request);
         if (response == null || R.isError(response))
         {
+            log.warn("调用AI代理对话失败 conversationId={}, cost={}ms, reason={}", conversationId,
+                    System.currentTimeMillis() - start, response == null ? "无响应" : response.getMsg());
             throw new IllegalStateException(response == null ? "AI代理对话无响应" : response.getMsg());
         }
+        log.info("调用AI代理对话完成 conversationId={}, model={}, outputLength={}, cost={}ms", conversationId,
+                response.getData() == null ? null : response.getData().getModel(),
+                response.getData() == null ? 0 : length(response.getData().getContent()),
+                System.currentTimeMillis() - start);
         return response.getData();
     }
 
@@ -73,10 +86,21 @@ public class AiProxyClient
         request.setUserMessage(userMessage);
         request.setAssistantMessage(assistantAnswer);
 
+        long start = System.currentTimeMillis();
+        log.info("追加AI短期记忆开始 conversationId={}, userMessageLength={}, assistantAnswerLength={}", conversationId,
+                length(userMessage), length(assistantAnswer));
         R<Void> response = remoteAiProxyService.appendMemory(request);
         if (response == null || R.isError(response))
         {
+            log.warn("追加AI短期记忆失败 conversationId={}, cost={}ms, reason={}", conversationId,
+                    System.currentTimeMillis() - start, response == null ? "无响应" : response.getMsg());
             throw new IllegalStateException(response == null ? "AI短期记忆追加无响应" : response.getMsg());
         }
+        log.info("追加AI短期记忆完成 conversationId={}, cost={}ms", conversationId, System.currentTimeMillis() - start);
+    }
+
+    private int length(String value)
+    {
+        return value == null ? 0 : value.length();
     }
 }

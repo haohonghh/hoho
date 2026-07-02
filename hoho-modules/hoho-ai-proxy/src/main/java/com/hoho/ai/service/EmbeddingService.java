@@ -10,6 +10,8 @@ import com.hoho.ai.model.response.BatchEmbeddingResponse;
 import com.hoho.ai.model.response.EmbeddingResponse;
 import com.hoho.common.core.utils.StringUtils;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -20,6 +22,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class EmbeddingService
 {
+    private static final Logger log = LoggerFactory.getLogger(EmbeddingService.class);
+
     private final EmbeddingModel embeddingModel;
 
     private final AiProxyProperties aiProxyProperties;
@@ -46,11 +50,15 @@ public class EmbeddingService
     public EmbeddingResponse embed(EmbeddingRequest request)
     {
         String text = requireText(request == null ? null : request.getText(), "向量化文本不能为空");
+        long start = System.currentTimeMillis();
+        log.info("AI向量化开始 textLength={}, model={}", text.length(), modelName());
         List<Double> vector = toVector(embeddingModel.embed(text));
 
         EmbeddingResponse response = new EmbeddingResponse();
         response.setDimension(resolveDimension(vector));
         response.setVector(vector);
+        log.info("AI向量化完成 textLength={}, dimension={}, cost={}ms", text.length(), response.getDimension(),
+                System.currentTimeMillis() - start);
         return response;
     }
 
@@ -78,11 +86,15 @@ public class EmbeddingService
         List<String> texts = normalizeTexts(request.getTexts());
         List<BatchEmbeddingResponse.Item> items = new ArrayList<>();
         int batchSize = Math.max(1, aiProxyProperties.getEmbedding().getBatchSize());
+        long start = System.currentTimeMillis();
+        log.info("AI批量向量化开始 textCount={}, batchSize={}, model={}", texts.size(), batchSize, modelName());
 
         for (int from = 0; from < texts.size(); from += batchSize)
         {
             int to = Math.min(from + batchSize, texts.size());
+            long batchStart = System.currentTimeMillis();
             List<float[]> vectors = embeddingModel.embed(texts.subList(from, to));
+            log.info("AI批量向量化分片完成 from={}, to={}, cost={}ms", from, to, System.currentTimeMillis() - batchStart);
             for (int i = 0; i < vectors.size(); i++)
             {
                 BatchEmbeddingResponse.Item item = new BatchEmbeddingResponse.Item();
@@ -95,6 +107,8 @@ public class EmbeddingService
         BatchEmbeddingResponse response = new BatchEmbeddingResponse();
         response.setDimension(items.isEmpty() ? aiProxyProperties.getEmbedding().getDimension() : items.get(0).getVector().size());
         response.setItems(items);
+        log.info("AI批量向量化完成 textCount={}, dimension={}, cost={}ms", texts.size(), response.getDimension(),
+                System.currentTimeMillis() - start);
         return response;
     }
 

@@ -7,10 +7,13 @@ import com.hoho.ai.model.response.AiChatResponse;
 import com.hoho.common.core.utils.StringUtils;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -21,6 +24,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class ChatService
 {
+    private static final Logger log = LoggerFactory.getLogger(ChatService.class);
+
     private final ChatModel chatModel;
 
     private final ChatClient chatClient;
@@ -31,7 +36,9 @@ public class ChatService
     {
         this.chatModel = chatModel;
         this.chatClient = ChatClient.builder(chatModel)
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .defaultAdvisors(
+                        MessageChatMemoryAdvisor.builder(chatMemory).build(),
+                        new SimpleLoggerAdvisor())
                 .build();
         this.aiProxyProperties = aiProxyProperties;
     }
@@ -56,6 +63,10 @@ public class ChatService
         String message = requireText(request == null ? null : request.getMessage(), "消息内容不能为空");
         String systemPrompt = defaultIfBlank(request.getSystemPrompt(), aiProxyProperties.getChat().getDefaultSystemPrompt());
         String conversationId = resolveConversationId(request.getConversationId());
+        long start = System.currentTimeMillis();
+        log.info("AI对话开始 conversationId={}, messageLength={}, systemPromptLength={}, model={}, temperature={}, maxTokens={}",
+                conversationId, message.length(), length(systemPrompt), request.getModel(), request.getTemperature(),
+                request.getMaxTokens());
 
         ChatResponse modelResponse = chatClient.prompt()
                 .system(systemPrompt)
@@ -70,6 +81,10 @@ public class ChatService
         response.setContent(modelResponse.getResult().getOutput().getText());
         response.setModel(modelResponse.getMetadata().getModel());
         response.setUsage(toUsage(modelResponse.getMetadata().getUsage()));
+        log.info("AI对话完成 conversationId={}, model={}, outputLength={}, totalTokens={}, cost={}ms",
+                conversationId, response.getModel(), length(response.getContent()),
+                response.getUsage() == null ? null : response.getUsage().getTotalTokens(),
+                System.currentTimeMillis() - start);
         return response;
     }
 
@@ -143,5 +158,10 @@ public class ChatService
     private String resolveConversationId(String conversationId)
     {
         return StringUtils.isBlank(conversationId) ? ChatMemory.DEFAULT_CONVERSATION_ID : conversationId;
+    }
+
+    private int length(String value)
+    {
+        return value == null ? 0 : value.length();
     }
 }

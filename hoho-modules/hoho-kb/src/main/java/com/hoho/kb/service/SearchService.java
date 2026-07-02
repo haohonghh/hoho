@@ -12,6 +12,8 @@ import com.hoho.kb.mapper.KeywordMapper;
 import com.hoho.kb.model.request.SearchRequest;
 import com.hoho.kb.model.response.SearchItem;
 import com.hoho.kb.model.response.SearchResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -22,6 +24,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class SearchService
 {
+    private static final Logger log = LoggerFactory.getLogger(SearchService.class);
+
     private final AiProxyClient aiProxyClient;
 
     private final EmbeddingMapper embeddingMapper;
@@ -58,12 +62,16 @@ public class SearchService
             throw new IllegalArgumentException("检索内容不能为空");
         }
         int topK = request.getTopK() == null ? kbProperties.getSearch().getDefaultTopK() : request.getTopK();
+        long start = System.currentTimeMillis();
+        log.info("知识库向量检索开始 queryLength={}, topK={}", request.getQuery().length(), topK);
         List<Double> vector = aiProxyClient.embedding(request.getQuery());
         List<SearchItem> items = embeddingMapper.search(vector, Math.max(1, topK));
 
         SearchResponse response = new SearchResponse();
         response.setQuery(request.getQuery());
         response.setItems(items);
+        log.info("知识库向量检索完成 queryLength={}, topK={}, itemCount={}, cost={}ms", request.getQuery().length(),
+                topK, items == null ? 0 : items.size(), System.currentTimeMillis() - start);
         return response;
     }
 
@@ -79,7 +87,11 @@ public class SearchService
     {
         validate(request);
         int topK = resolveTopK(request);
+        long start = System.currentTimeMillis();
+        log.info("知识库关键词检索开始 queryLength={}, topK={}", request.getQuery().length(), topK);
         List<SearchItem> items = keywordMapper.search(request.getQuery().trim(), topK);
+        log.info("知识库关键词检索完成 queryLength={}, topK={}, itemCount={}, cost={}ms", request.getQuery().length(),
+                topK, items == null ? 0 : items.size(), System.currentTimeMillis() - start);
         return response(request.getQuery(), items);
     }
 
@@ -102,12 +114,19 @@ public class SearchService
         validate(request);
         int topK = resolveTopK(request);
         int recallTopK = Math.max(topK * 3, topK);
+        long start = System.currentTimeMillis();
+        log.info("知识库混合检索开始 queryLength={}, topK={}, recallTopK={}", request.getQuery().length(), topK,
+                recallTopK);
 
         List<SearchItem> keywordItems = keywordMapper.search(request.getQuery().trim(), recallTopK);
         List<Double> vector = aiProxyClient.embedding(request.getQuery());
         List<SearchItem> vectorItems = embeddingMapper.search(vector, recallTopK);
 
         List<SearchItem> items = fuseByRrf(keywordItems, vectorItems, topK);
+        log.info("知识库混合检索完成 queryLength={}, topK={}, keywordCount={}, vectorCount={}, itemCount={}, cost={}ms",
+                request.getQuery().length(), topK, keywordItems == null ? 0 : keywordItems.size(),
+                vectorItems == null ? 0 : vectorItems.size(), items == null ? 0 : items.size(),
+                System.currentTimeMillis() - start);
         return response(request.getQuery(), items);
     }
 

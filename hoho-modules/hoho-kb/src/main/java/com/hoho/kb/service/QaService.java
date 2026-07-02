@@ -8,6 +8,8 @@ import com.hoho.kb.domain.Qa;
 import com.hoho.kb.mapper.EmbeddingMapper;
 import com.hoho.kb.mapper.QaMapper;
 import com.hoho.kb.model.request.QaRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class QaService
 {
+    private static final Logger log = LoggerFactory.getLogger(QaService.class);
+
     private final QaMapper qaMapper;
 
     private final EmbeddingMapper embeddingMapper;
@@ -112,6 +116,8 @@ public class QaService
     @Transactional(rollbackFor = Exception.class)
     public void publish(Long id)
     {
+        long start = System.currentTimeMillis();
+        log.info("发布问答知识开始 qaId={}", id);
         Qa qa = get(id);
         List<Double> vector = aiProxyClient.embedding(buildEmbeddingContent(qa));
         if (vector.size() != kbProperties.getEmbedding().getDimension())
@@ -120,6 +126,8 @@ public class QaService
         }
         embeddingMapper.replaceQaEmbedding(qa.getId(), buildEmbeddingContent(qa), vector, kbProperties.getEmbedding().getModel());
         qaMapper.updateStatus(id, "published");
+        log.info("发布问答知识完成 qaId={}, dimension={}, model={}, cost={}ms", id, vector.size(),
+                kbProperties.getEmbedding().getModel(), System.currentTimeMillis() - start);
     }
 
     /**

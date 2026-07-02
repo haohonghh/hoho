@@ -45,12 +45,28 @@
         </filter>
     </appender>
 
+    <appender name="file_ai_debug" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.path}/ai-debug.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${log.path}/ai-debug.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>14</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${log.pattern}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>DEBUG</level>
+        </filter>
+    </appender>
+
     <logger name="com.hoho" level="info"/>
+    <logger name="org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor" level="debug"/>
     <logger name="org.springframework" level="warn"/>
 
     <root level="info">
         <appender-ref ref="console"/>
         <appender-ref ref="file_info"/>
         <appender-ref ref="file_error"/>
+        <appender-ref ref="file_ai_debug"/>
     </root>
 </configuration>

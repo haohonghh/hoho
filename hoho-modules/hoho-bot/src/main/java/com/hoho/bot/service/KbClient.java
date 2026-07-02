@@ -5,6 +5,8 @@ import com.hoho.bot.model.request.KbQaRequest;
 import com.hoho.bot.model.request.KbSearchRequest;
 import com.hoho.bot.model.response.KbSearchResponse;
 import com.hoho.common.core.domain.R;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,6 +17,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class KbClient
 {
+    private static final Logger log = LoggerFactory.getLogger(KbClient.class);
+
     private final RemoteKbService remoteKbService;
 
     public KbClient(RemoteKbService remoteKbService)
@@ -46,11 +50,18 @@ public class KbClient
         request.setQuery(query);
         request.setTopK(topK);
 
+        long start = System.currentTimeMillis();
+        log.info("调用知识库混合检索开始 queryLength={}, topK={}", length(query), topK);
         R<KbSearchResponse> response = remoteKbService.hybridSearch(request);
         if (response == null || R.isError(response))
         {
+            log.warn("调用知识库混合检索失败 queryLength={}, topK={}, cost={}ms, reason={}", length(query), topK,
+                    System.currentTimeMillis() - start, response == null ? "无响应" : response.getMsg());
             throw new IllegalStateException(response == null ? "知识库检索无响应" : response.getMsg());
         }
+        log.info("调用知识库混合检索完成 queryLength={}, topK={}, itemCount={}, cost={}ms", length(query), topK,
+                response.getData() == null || response.getData().getItems() == null ? 0 : response.getData().getItems().size(),
+                System.currentTimeMillis() - start);
         return response.getData();
     }
 
@@ -71,17 +82,31 @@ public class KbClient
         request.setAnswer(answer);
         request.setSimilarQuestions(similarQuestions);
 
+        long start = System.currentTimeMillis();
+        log.info("创建并发布问答知识开始 categoryId={}, questionLength={}, answerLength={}", categoryId,
+                length(question), length(answer));
         R<Long> createResponse = remoteKbService.createQa(request);
         if (createResponse == null || R.isError(createResponse))
         {
+            log.warn("创建问答知识失败 categoryId={}, cost={}ms, reason={}", categoryId,
+                    System.currentTimeMillis() - start, createResponse == null ? "无响应" : createResponse.getMsg());
             throw new IllegalStateException(createResponse == null ? "创建问答知识无响应" : createResponse.getMsg());
         }
         Long qaId = createResponse.getData();
         R<Boolean> publishResponse = remoteKbService.publishQa(qaId);
         if (publishResponse == null || R.isError(publishResponse))
         {
+            log.warn("发布问答知识失败 qaId={}, cost={}ms, reason={}", qaId, System.currentTimeMillis() - start,
+                    publishResponse == null ? "无响应" : publishResponse.getMsg());
             throw new IllegalStateException(publishResponse == null ? "发布问答知识无响应" : publishResponse.getMsg());
         }
+        log.info("创建并发布问答知识完成 qaId={}, categoryId={}, cost={}ms", qaId, categoryId,
+                System.currentTimeMillis() - start);
         return qaId;
+    }
+
+    private int length(String value)
+    {
+        return value == null ? 0 : value.length();
     }
 }
