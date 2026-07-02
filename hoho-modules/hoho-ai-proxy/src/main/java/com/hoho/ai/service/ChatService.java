@@ -35,6 +35,21 @@ public class ChatService
         this.aiProxyProperties = aiProxyProperties;
     }
 
+    /**
+     * 执行单轮对话调用。
+     * <p>
+     * 核心流程：
+     * 1. 校验用户消息内容非空；若请求中未指定系统提示词，则使用配置的默认值
+     * 2. 组装消息列表（可选的 SystemMessage + 必填的 UserMessage）
+     * 3. 将请求中的模型参数（model/temperature/maxTokens）合并到 DashScopeChatOptions
+     * 4. 调用底层 ChatModel 获取模型响应
+     * 5. 将 Spring AI 的标准 ChatResponse 转换为自定义的 AiChatResponse，
+     *    携带会话ID、回复内容、使用的模型及 Token 用量统计
+     * </p>
+     *
+     * @param request 对话请求，包含消息内容、可选的系统提示词与模型参数
+     * @return 标准化的 AI 对话回复，包含生成的文本、模型名及用量信息
+     */
     public AiChatResponse chat(ChatRequest request)
     {
         String message = requireText(request == null ? null : request.getMessage(), "消息内容不能为空");
@@ -63,6 +78,16 @@ public class ChatService
         return chatModel.getClass().getName();
     }
 
+    /**
+     * 根据请求参数构建 DashScope 调用选项。
+     * <p>
+     * 仅当调用方显式指定了 model / temperature / maxTokens 时才覆盖默认值，
+     * 未指定的字段会回落到 Spring AI DashScope 自动配置的默认行为。
+     * </p>
+     *
+     * @param request 原始请求，可能部分字段为 null
+     * @return 合并后的 DashScopeChatOptions 实例
+     */
     private DashScopeChatOptions buildOptions(ChatRequest request)
     {
         DashScopeChatOptions options = new DashScopeChatOptions();
@@ -81,6 +106,13 @@ public class ChatService
         return options;
     }
 
+    /**
+     * 将 Spring AI 的标准 Usage 对象映射为内部响应结构。
+     * 模型未返回用量信息时返回 null，由调用方自行处理。
+     *
+     * @param usage 底层模型的 Token 用量统计
+     * @return 转换后的 Usage 对象；若入参为 null 则返回 null
+     */
     private AiChatResponse.Usage toUsage(Usage usage)
     {
         if (usage == null)

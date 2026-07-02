@@ -33,6 +33,19 @@ public class AiProxyClient
         this.kbProperties = kbProperties;
     }
 
+    /**
+     * 调用远程AI代理服务将文本向量化。
+     * <p>
+     * 通过 RestTemplate 向 AI代理服务的 /ai/embedding 接口发送 POST 请求，
+     * 将传入的文本转换为高维浮点数向量（稠密向量），用于后续的语义检索。
+     * <p>
+     * 响应格式：{"code": 200, "msg": "success", "data": {"vector": [...]}}
+     *
+     * @param text 需要向量化的原始文本
+     * @return 向量表示（高维浮点数列表），维度由 AI模型决定
+     * @throws IllegalArgumentException      当文本为空或空白时抛出
+     * @throws IllegalStateException         当 AI代理服务无响应、返回错误码或数据为空时抛出
+     */
     public List<Double> embedding(String text)
     {
         if (StringUtils.isBlank(text))

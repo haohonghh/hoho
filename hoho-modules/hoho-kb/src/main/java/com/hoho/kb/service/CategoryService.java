@@ -27,6 +27,16 @@ public class CategoryService
         this.categoryMapper = categoryMapper;
     }
 
+    /**
+     * 创建一个新的知识分类。
+     * <p>
+     * 支持创建根分类（parentId为空时设为0）和子分类。
+     * 排序值越小越靠前，未指定时默认为0。
+     *
+     * @param request 分类请求参数，包含名称、父分类ID和排序值
+     * @return 新增分类的主键ID
+     * @throws IllegalArgumentException 当分类名称为空白时抛出
+     */
     public Long create(CategoryRequest request)
     {
         if (request == null || StringUtils.isBlank(request.getName()))
@@ -41,6 +51,19 @@ public class CategoryService
         return category.getId();
     }
 
+    /**
+     * 以树形结构查询所有分类。
+     * <p>
+     * 算法思路（经典的 "两次遍历建树法"）：
+     * 1. 从数据库获取所有全量分类扁平列表
+     * 2. 首次遍历：将所有分类转换为 CategoryTreeNode 并放入以 ID 为 key 的 Map
+     * 3. 二次遍历：根据 parentId 将节点挂载到父节点的 children 中，
+     *    找不到父节点的视为根节点
+     * <p>
+     * 注意：parentId 为 0 的分类会被视为根节点（与 create 方法中默认值保持一致）。
+     *
+     * @return 分类树的根节点列表，每个节点包含嵌套的子分类
+     */
     public List<CategoryTreeNode> tree()
     {
         List<Category> categories = categoryMapper.list();
@@ -66,6 +89,14 @@ public class CategoryService
         return roots;
     }
 
+    /**
+     * 将 Category 数据库实体转换为分类树节点 CategoryTreeNode。
+     * <p>
+     * 拷贝所有基础字段，用于树形结构展示。
+     *
+     * @param category 数据库分类实体
+     * @return 树形结构节点
+     */
     private CategoryTreeNode copy(Category category)
     {
         CategoryTreeNode node = new CategoryTreeNode();
