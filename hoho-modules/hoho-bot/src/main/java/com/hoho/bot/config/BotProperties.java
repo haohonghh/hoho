@@ -14,9 +14,16 @@ public class BotProperties
 {
     private final Answer answer = new Answer();
 
+    private final Agent agent = new Agent();
+
     public Answer getAnswer()
     {
         return answer;
+    }
+
+    public Agent getAgent()
+    {
+        return agent;
     }
 
     public static class Answer
@@ -89,6 +96,22 @@ public class BotProperties
         public void setServiceDegradeReply(String serviceDegradeReply)
         {
             this.serviceDegradeReply = serviceDegradeReply;
+        }
+
+    }
+
+    public static class Agent
+    {
+        private String code = "it_support";
+
+        public String getCode()
+        {
+            return code;
+        }
+
+        public void setCode(String code)
+        {
+            this.code = code;
         }
     }
 

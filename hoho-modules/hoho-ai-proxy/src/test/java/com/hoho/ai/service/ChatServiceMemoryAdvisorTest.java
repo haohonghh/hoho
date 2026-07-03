@@ -27,6 +27,7 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ChatServiceMemoryAdvisorTest
@@ -94,6 +95,80 @@ class ChatServiceMemoryAdvisorTest
                 "应输出 Spring AI 请求日志");
         assertTrue(appender.messages.stream().anyMatch(message -> message.contains("response:")),
                 "应输出 Spring AI 响应日志");
+    }
+
+    @Test
+    void 未指定模型时自动使用默认模型()
+    {
+        RecordingChatModel chatModel = new RecordingChatModel();
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .chatMemoryRepository(new InMemoryChatMemoryRepository())
+                .maxMessages(10)
+                .build();
+        AiProxyProperties properties = new AiProxyProperties();
+        properties.getChat().setDefaultModel("qwen-turbo");
+        properties.getChat().setAvailableModels(List.of("qwen-plus", "qwen-turbo"));
+        ChatService chatService = new ChatService(chatModel, chatMemory, properties);
+
+        ChatRequest request = new ChatRequest();
+        request.setConversationId("session-1");
+        request.setSystemPrompt("当前系统提示词");
+        request.setMessage("当前用户问题");
+
+        chatService.chat(request);
+
+        assertEquals("qwen-turbo", ((com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions) chatModel.lastPrompt.getOptions()).getModel());
+    }
+
+    @Test
+    void 指定了白名单外模型时拒绝调用()
+    {
+        RecordingChatModel chatModel = new RecordingChatModel();
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .chatMemoryRepository(new InMemoryChatMemoryRepository())
+                .maxMessages(10)
+                .build();
+        AiProxyProperties properties = new AiProxyProperties();
+        properties.getChat().setDefaultModel("qwen-plus");
+        properties.getChat().setAvailableModels(List.of("qwen-plus", "qwen-turbo"));
+        ChatService chatService = new ChatService(chatModel, chatMemory, properties);
+
+        ChatRequest request = new ChatRequest();
+        request.setConversationId("session-1");
+        request.setSystemPrompt("当前系统提示词");
+        request.setMessage("当前用户问题");
+        request.setModel("gpt-4");
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> chatService.chat(request));
+
+        assertEquals("模型不在可用列表中", exception.getMessage());
+    }
+
+    @Test
+    void 指定场景时优先使用场景绑定模型()
+    {
+        RecordingChatModel chatModel = new RecordingChatModel();
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .chatMemoryRepository(new InMemoryChatMemoryRepository())
+                .maxMessages(10)
+                .build();
+        AiProxyProperties properties = new AiProxyProperties();
+        properties.getChat().setDefaultModel("qwen-plus");
+        properties.getChat().setAvailableModels(List.of("qwen-plus", "qwen-turbo"));
+        AiProxyProperties.ChatScene scene = new AiProxyProperties.ChatScene();
+        scene.setModel("qwen-turbo");
+        properties.getChat().getScenes().put("chat_general", scene);
+        ChatService chatService = new ChatService(chatModel, chatMemory, properties);
+
+        ChatRequest request = new ChatRequest();
+        request.setConversationId("session-1");
+        request.setSystemPrompt("当前系统提示词");
+        request.setMessage("当前用户问题");
+        request.setScene("chat_general");
+
+        chatService.chat(request);
+
+        assertEquals("qwen-turbo", ((com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions) chatModel.lastPrompt.getOptions()).getModel());
     }
 
     private static class RecordingAppender extends AppenderBase<ILoggingEvent>

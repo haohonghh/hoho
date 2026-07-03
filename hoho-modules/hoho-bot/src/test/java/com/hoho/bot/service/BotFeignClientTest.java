@@ -41,11 +41,13 @@ class BotFeignClientTest
         StubRemoteAiProxyService remoteAiProxyService = new StubRemoteAiProxyService();
         AiProxyClient aiProxyClient = new AiProxyClient(remoteAiProxyService);
 
-        AiChatResponse response = aiProxyClient.chat("session-1", "系统提示词", "用户问题");
+        AiChatResponse response = aiProxyClient.chat("session-1", "系统提示词", "用户问题", "chat_with_kb", "it_support");
 
         assertEquals("session-1", remoteAiProxyService.lastChatRequest.getConversationId());
         assertEquals("系统提示词", remoteAiProxyService.lastChatRequest.getSystemPrompt());
         assertEquals("用户问题", remoteAiProxyService.lastChatRequest.getMessage());
+        assertEquals("chat_with_kb", remoteAiProxyService.lastChatRequest.getScene());
+        assertEquals("it_support", remoteAiProxyService.lastChatRequest.getAgentCode());
         assertEquals(0.3D, remoteAiProxyService.lastChatRequest.getTemperature());
         assertEquals("AI回答", response.getContent());
     }

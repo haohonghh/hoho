@@ -68,9 +68,9 @@ public class ChatService
         String systemPrompt = defaultIfBlank(request.getSystemPrompt(), aiProxyProperties.getChat().getDefaultSystemPrompt());
         String conversationId = resolveConversationId(request.getConversationId());
         long start = System.currentTimeMillis();
-        log.info("AI对话开始 conversationId={}, messageLength={}, systemPromptLength={}, model={}, temperature={}, maxTokens={}",
-                conversationId, message.length(), length(systemPrompt), request.getModel(), request.getTemperature(),
-                request.getMaxTokens());
+        log.info("AI对话开始 conversationId={}, agentCode={}, scene={}, messageLength={}, systemPromptLength={}, model={}, temperature={}, maxTokens={}",
+                conversationId, request.getAgentCode(), request.getScene(), message.length(), length(systemPrompt),
+                request.getModel(), request.getTemperature(), request.getMaxTokens());
 
         ChatResponse modelResponse = chatClient.prompt()
                 .system(systemPrompt)
@@ -108,9 +108,9 @@ public class ChatService
         String systemPrompt = defaultIfBlank(request.getSystemPrompt(), aiProxyProperties.getChat().getDefaultSystemPrompt());
         String conversationId = resolveConversationId(request.getConversationId());
         long start = System.currentTimeMillis();
-        log.info("AI流式对话开始 conversationId={}, messageLength={}, systemPromptLength={}, model={}, temperature={}, maxTokens={}",
-                conversationId, message.length(), length(systemPrompt), request.getModel(), request.getTemperature(),
-                request.getMaxTokens());
+        log.info("AI流式对话开始 conversationId={}, agentCode={}, scene={}, messageLength={}, systemPromptLength={}, model={}, temperature={}, maxTokens={}",
+                conversationId, request.getAgentCode(), request.getScene(), message.length(), length(systemPrompt),
+                request.getModel(), request.getTemperature(), request.getMaxTokens());
 
         return chatClient.prompt()
                 .system(systemPrompt)
@@ -141,18 +141,22 @@ public class ChatService
      */
     private DashScopeChatOptions buildOptions(ChatRequest request)
     {
+        AiProxyProperties.ChatScene scene = resolveScene(request == null ? null : request.getScene());
         DashScopeChatOptions options = new DashScopeChatOptions();
-        if (StringUtils.isNotBlank(request.getModel()))
+        options.setModel(resolveModel(request == null ? null : request.getModel(), scene));
+        Double temperature = request == null || request.getTemperature() == null
+                ? scene == null ? null : scene.getTemperature()
+                : request.getTemperature();
+        if (temperature != null)
         {
-            options.setModel(request.getModel());
+            options.setTemperature(temperature);
         }
-        if (request.getTemperature() != null)
+        Integer maxTokens = request == null || request.getMaxTokens() == null
+                ? scene == null ? null : scene.getMaxTokens()
+                : request.getMaxTokens();
+        if (maxTokens != null)
         {
-            options.setTemperature(request.getTemperature());
-        }
-        if (request.getMaxTokens() != null)
-        {
-            options.setMaxTokens(request.getMaxTokens());
+            options.setMaxTokens(maxTokens);
         }
         return options;
     }
@@ -189,6 +193,33 @@ public class ChatService
     private String defaultIfBlank(String value, String defaultValue)
     {
         return StringUtils.isBlank(value) ? defaultValue : value;
+    }
+
+    private String resolveModel(String requestModel, AiProxyProperties.ChatScene scene)
+    {
+        String sceneModel = scene == null ? null : scene.getModel();
+        String model = defaultIfBlank(requestModel, defaultIfBlank(sceneModel, aiProxyProperties.getChat().getDefaultModel()));
+        if (StringUtils.isBlank(model))
+        {
+            return null;
+        }
+        String trimModel = model.trim();
+        if (aiProxyProperties.getChat().getAvailableModels() != null
+                && !aiProxyProperties.getChat().getAvailableModels().isEmpty()
+                && !aiProxyProperties.getChat().getAvailableModels().contains(trimModel))
+        {
+            throw new IllegalArgumentException("模型不在可用列表中");
+        }
+        return trimModel;
+    }
+
+    private AiProxyProperties.ChatScene resolveScene(String scene)
+    {
+        if (StringUtils.isBlank(scene) || aiProxyProperties.getChat().getScenes() == null)
+        {
+            return null;
+        }
+        return aiProxyProperties.getChat().getScenes().get(scene.trim());
     }
 
     private String resolveConversationId(String conversationId)

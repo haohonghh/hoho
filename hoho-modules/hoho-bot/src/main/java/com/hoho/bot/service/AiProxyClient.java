@@ -49,18 +49,20 @@ public class AiProxyClient
      *         永远不会返回 null，失败时会抛出异常
      * @throws IllegalStateException 当响应为 null 或业务状态为 error 时
      */
-    public AiChatResponse chat(String conversationId, String systemPrompt, String message)
+    public AiChatResponse chat(String conversationId, String systemPrompt, String message, String scene, String agentCode)
     {
         AiChatRequest request = new AiChatRequest();
         request.setConversationId(conversationId);
         request.setSystemPrompt(systemPrompt);
         request.setMessage(message);
+        request.setScene(scene);
+        request.setAgentCode(agentCode);
         // temperature 设为 0.3，使回答更稳定、更贴近知识库资料，减少随意发挥
         request.setTemperature(0.3D);
 
         long start = System.currentTimeMillis();
-        log.info("调用AI代理对话开始 conversationId={}, messageLength={}, systemPromptLength={}", conversationId,
-                length(message), length(systemPrompt));
+        log.info("调用AI代理对话开始 conversationId={}, agentCode={}, scene={}, messageLength={}, systemPromptLength={}", conversationId,
+                agentCode, scene, length(message), length(systemPrompt));
         R<AiChatResponse> response = remoteAiProxyService.chat(request);
         if (response == null || R.isError(response))
         {

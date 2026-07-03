@@ -58,6 +58,20 @@ hoho:
   ai:
     chat:
       default-system-prompt: 你是企业IT运维智能客服助手，回答要准确、简洁、可执行。
+      default-model: qwen-plus
+      available-models:
+        - qwen-plus
+        - deepseek-v4-flash
+      scenes:
+        chat_general:
+          model: deepseek-v4-flash
+          temperature: 0.3
+        chat_with_kb:
+          model: qwen-plus
+          temperature: 0.3
+        memory_summary:
+          model: qwen-plus
+          temperature: 0.1
     embedding:
       dimension: 768
       batch-size: 16

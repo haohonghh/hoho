@@ -27,6 +27,10 @@ import reactor.core.publisher.Flux;
 @Service
 public class BotService
 {
+    private static final String SCENE_CHAT_WITH_KB = "chat_with_kb";
+
+    private static final String SCENE_CHAT_GENERAL = "chat_general";
+
     private static final Logger log = LoggerFactory.getLogger(BotService.class);
 
     private final KbClient kbClient;
@@ -82,9 +86,10 @@ public class BotService
         validate(request);
 
         String conversationId = resolveConversationId(request.getConversationId());
+        String agentCode = resolveAgentCode(request);
         long start = System.currentTimeMillis();
-        log.info("Bot对话开始 conversationId={}, messageLength={}, requestTopK={}", conversationId,
-                request.getMessage().length(), request.getTopK());
+        log.info("Bot对话开始 conversationId={}, agentCode={}, messageLength={}, requestTopK={}", conversationId,
+                agentCode, request.getMessage().length(), request.getTopK());
         // 先将用户消息持久化（同时保证会话存在）
         conversationRecordService.recordUserMessage(conversationId, request.getMessage());
 
@@ -107,12 +112,12 @@ public class BotService
         if (best != null && best.getScore() != null && best.getScore() >= botProperties.getAnswer().getAssistMinScore())
         {
             return aiWithFallback(conversationId, enrichSystemPrompt(buildAssistSystemPrompt(best)), request.getMessage(),
-                    fromAiWithKbSource(conversationId, best, references), start);
+                    SCENE_CHAT_WITH_KB, agentCode, fromAiWithKbSource(conversationId, best, references), start);
         }
 
         // 路径三：知识库未命中，仅用兜底 system prompt 让 AI 生成回答
         return aiWithFallback(conversationId, enrichSystemPrompt(botProperties.getAnswer().getFallbackSystemPrompt()), request.getMessage(),
-                fromAiSource(conversationId, references), start);
+                SCENE_CHAT_GENERAL, agentCode, fromAiSource(conversationId, references), start);
     }
 
     /**
@@ -130,9 +135,10 @@ public class BotService
         validate(request);
 
         String conversationId = resolveConversationId(request.getConversationId());
+        String agentCode = resolveAgentCode(request);
         long start = System.currentTimeMillis();
-        log.info("Bot流式对话开始 conversationId={}, messageLength={}, requestTopK={}", conversationId,
-                request.getMessage().length(), request.getTopK());
+        log.info("Bot流式对话开始 conversationId={}, agentCode={}, messageLength={}, requestTopK={}", conversationId,
+                agentCode, request.getMessage().length(), request.getTopK());
         conversationRecordService.recordUserMessage(conversationId, request.getMessage());
 
         int topK = request.getTopK() == null ? botProperties.getAnswer().getTopK() : request.getTopK();
@@ -150,11 +156,11 @@ public class BotService
         if (best != null && best.getScore() != null && best.getScore() >= botProperties.getAnswer().getAssistMinScore())
         {
             return streamAiWithFallback(conversationId, enrichSystemPrompt(buildAssistSystemPrompt(best)), request.getMessage(),
-                    fromAiWithKbSource(conversationId, best, references), start);
+                    SCENE_CHAT_WITH_KB, agentCode, fromAiWithKbSource(conversationId, best, references), start);
         }
 
         return streamAiWithFallback(conversationId, enrichSystemPrompt(botProperties.getAnswer().getFallbackSystemPrompt()),
-                request.getMessage(), fromAiSource(conversationId, references), start);
+                request.getMessage(), SCENE_CHAT_GENERAL, agentCode, fromAiSource(conversationId, references), start);
     }
 
     /**
@@ -303,12 +309,13 @@ public class BotService
         }
     }
 
-    private BotChatResponse aiWithFallback(String conversationId, String systemPrompt, String message,
+    private BotChatResponse aiWithFallback(String conversationId, String systemPrompt, String message, String scene,
+            String agentCode,
             BotChatResponse template, long start)
     {
         try
         {
-            AiChatResponse aiResponse = aiProxyClient.chat(conversationId, systemPrompt, message);
+            AiChatResponse aiResponse = aiProxyClient.chat(conversationId, systemPrompt, message, scene, agentCode);
             template.setAnswer(aiResponse == null ? null : aiResponse.getContent());
             return recordAndReturn(template, message, false, start);
         }
@@ -319,11 +326,12 @@ public class BotService
         }
     }
 
-    private Flux<String> streamAiWithFallback(String conversationId, String systemPrompt, String message,
+    private Flux<String> streamAiWithFallback(String conversationId, String systemPrompt, String message, String scene,
+            String agentCode,
             BotChatResponse template, long start)
     {
         StringBuilder answerBuilder = new StringBuilder();
-        return aiProxyStreamClient.streamChat(conversationId, systemPrompt, message)
+        return aiProxyStreamClient.streamChat(conversationId, systemPrompt, message, scene, agentCode)
                 .doOnNext(answerBuilder::append)
                 .doOnComplete(() -> {
                     template.setAnswer(answerBuilder.toString());
@@ -427,6 +435,15 @@ public class BotService
     private String resolveConversationId(String conversationId)
     {
         return StringUtils.isBlank(conversationId) ? UUID.randomUUID().toString() : conversationId;
+    }
+
+    private String resolveAgentCode(BotChatRequest request)
+    {
+        if (request != null && StringUtils.isNotBlank(request.getAgentCode()))
+        {
+            return request.getAgentCode().trim();
+        }
+        return StringUtils.isBlank(botProperties.getAgent().getCode()) ? "it_support" : botProperties.getAgent().getCode().trim();
     }
 
     /**

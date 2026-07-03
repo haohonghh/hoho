@@ -41,6 +41,8 @@ mybatis:
 
 hoho:
   bot:
+    agent:
+      code: it_support
     answer:
       direct-min-score: 0.65
       assist-min-score: 0.5

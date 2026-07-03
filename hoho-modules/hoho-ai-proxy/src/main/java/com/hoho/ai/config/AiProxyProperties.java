@@ -1,5 +1,10 @@
 package com.hoho.ai.config;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.hoho.ai.constants.AiConstants;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -38,6 +43,12 @@ public class AiProxyProperties
     {
         private String defaultSystemPrompt = AiConstants.DEFAULT_SYSTEM_PROMPT;
 
+        private String defaultModel = "qwen-plus";
+
+        private List<String> availableModels = new ArrayList<>(List.of("qwen-plus"));
+
+        private Map<String, ChatScene> scenes = new LinkedHashMap<>();
+
         public String getDefaultSystemPrompt()
         {
             return defaultSystemPrompt;
@@ -46,6 +57,75 @@ public class AiProxyProperties
         public void setDefaultSystemPrompt(String defaultSystemPrompt)
         {
             this.defaultSystemPrompt = defaultSystemPrompt;
+        }
+
+        public String getDefaultModel()
+        {
+            return defaultModel;
+        }
+
+        public void setDefaultModel(String defaultModel)
+        {
+            this.defaultModel = defaultModel;
+        }
+
+        public List<String> getAvailableModels()
+        {
+            return availableModels;
+        }
+
+        public void setAvailableModels(List<String> availableModels)
+        {
+            this.availableModels = availableModels;
+        }
+
+        public Map<String, ChatScene> getScenes()
+        {
+            return scenes;
+        }
+
+        public void setScenes(Map<String, ChatScene> scenes)
+        {
+            this.scenes = scenes;
+        }
+    }
+
+    public static class ChatScene
+    {
+        private String model;
+
+        private Double temperature;
+
+        private Integer maxTokens;
+
+        public String getModel()
+        {
+            return model;
+        }
+
+        public void setModel(String model)
+        {
+            this.model = model;
+        }
+
+        public Double getTemperature()
+        {
+            return temperature;
+        }
+
+        public void setTemperature(Double temperature)
+        {
+            this.temperature = temperature;
+        }
+
+        public Integer getMaxTokens()
+        {
+            return maxTokens;
+        }
+
+        public void setMaxTokens(Integer maxTokens)
+        {
+            this.maxTokens = maxTokens;
         }
     }
 

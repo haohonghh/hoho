@@ -11,6 +11,8 @@ public class BotChatRequest
 
     private String message;
 
+    private String agentCode;
+
     private Integer topK;
 
     public String getConversationId()
@@ -36,6 +38,16 @@ public class BotChatRequest
     public Integer getTopK()
     {
         return topK;
+    }
+
+    public String getAgentCode()
+    {
+        return agentCode;
+    }
+
+    public void setAgentCode(String agentCode)
+    {
+        this.agentCode = agentCode;
     }
 
     public void setTopK(Integer topK)

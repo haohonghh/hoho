@@ -13,6 +13,12 @@ public class AiChatRequest
 
     private String message;
 
+    private String scene;
+
+    private String agentCode;
+
+    private String model;
+
     private Double temperature;
 
     public String getConversationId()
@@ -48,6 +54,36 @@ public class AiChatRequest
     public Double getTemperature()
     {
         return temperature;
+    }
+
+    public String getScene()
+    {
+        return scene;
+    }
+
+    public void setScene(String scene)
+    {
+        this.scene = scene;
+    }
+
+    public String getAgentCode()
+    {
+        return agentCode;
+    }
+
+    public void setAgentCode(String agentCode)
+    {
+        this.agentCode = agentCode;
+    }
+
+    public String getModel()
+    {
+        return model;
+    }
+
+    public void setModel(String model)
+    {
+        this.model = model;
     }
 
     public void setTemperature(Double temperature)

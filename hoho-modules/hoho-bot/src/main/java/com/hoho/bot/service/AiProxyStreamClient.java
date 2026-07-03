@@ -28,17 +28,19 @@ public class AiProxyStreamClient
         this.webClient = webClientBuilder.baseUrl("http://hoho-ai-proxy").build();
     }
 
-    public Flux<String> streamChat(String conversationId, String systemPrompt, String message)
+    public Flux<String> streamChat(String conversationId, String systemPrompt, String message, String scene, String agentCode)
     {
         AiChatRequest request = new AiChatRequest();
         request.setConversationId(conversationId);
         request.setSystemPrompt(systemPrompt);
         request.setMessage(message);
+        request.setScene(scene);
+        request.setAgentCode(agentCode);
         request.setTemperature(0.3D);
 
         long start = System.currentTimeMillis();
-        log.info("调用AI代理流式对话开始 conversationId={}, messageLength={}, systemPromptLength={}",
-                conversationId, length(message), length(systemPrompt));
+        log.info("调用AI代理流式对话开始 conversationId={}, agentCode={}, scene={}, messageLength={}, systemPromptLength={}",
+                conversationId, agentCode, scene, length(message), length(systemPrompt));
         return webClient.post()
                 .uri("/ai/chat/stream")
                 .contentType(MediaType.APPLICATION_JSON)

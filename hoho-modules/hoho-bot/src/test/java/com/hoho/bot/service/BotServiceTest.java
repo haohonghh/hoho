@@ -66,10 +66,48 @@ class BotServiceTest
         assertEquals("请先检查网线和 Wi-Fi，再确认 IP 与 DNS。", response.getAnswer());
         assertEquals(0.62D, response.getScore());
         assertEquals(1, aiProxyClient.chatCount);
+        assertEquals("chat_with_kb", aiProxyClient.lastScene);
+        assertEquals("it_support", aiProxyClient.lastAgentCode);
         assertTrue(aiProxyClient.lastSystemPrompt.contains("电脑无法联网怎么办？"));
         assertTrue(aiProxyClient.lastSystemPrompt.contains("检查网线和 Wi-Fi。"));
         assertEquals("请先检查网线和 Wi-Fi，再确认 IP 与 DNS。", conversationRecordService.lastAssistantAnswer);
         assertEquals(0, aiProxyClient.memoryAppendCount);
+    }
+
+    @Test
+    void 未显式传入时使用配置中的默认AgentCode()
+    {
+        BotProperties properties = botProperties();
+        properties.getAgent().setCode("ops_default");
+        StubKbClient kbClient = new StubKbClient(properties, item(1L, "打印机问题", "重启打印机。", 0.2D));
+        StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
+        aiProxyClient.responseContent = "可以继续检查网关配置。";
+        StubConversationRecordService conversationRecordService = new StubConversationRecordService();
+        BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
+
+        botService.chat(request());
+
+        assertEquals("ops_default", aiProxyClient.lastAgentCode);
+    }
+
+    @Test
+    void 显式传入时优先使用请求中的AgentCode()
+    {
+        BotProperties properties = botProperties();
+        properties.getAgent().setCode("ops_default");
+        StubKbClient kbClient = new StubKbClient(properties, item(1L, "打印机问题", "重启打印机。", 0.2D));
+        StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
+        aiProxyClient.responseContent = "可以继续检查网关配置。";
+        StubConversationRecordService conversationRecordService = new StubConversationRecordService();
+        BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
+        BotChatRequest request = request();
+        request.setAgentCode("network_expert");
+
+        botService.chat(request);
+
+        assertEquals("network_expert", aiProxyClient.lastAgentCode);
     }
 
     @Test
@@ -89,6 +127,8 @@ class BotServiceTest
         assertEquals("请提供更多问题现象。", response.getAnswer());
         assertNull(response.getScore());
         assertEquals(1, aiProxyClient.chatCount);
+        assertEquals("chat_general", aiProxyClient.lastScene);
+        assertEquals("it_support", aiProxyClient.lastAgentCode);
         assertEquals(properties.getAnswer().getFallbackSystemPrompt(), aiProxyClient.lastSystemPrompt);
         assertEquals("请提供更多问题现象。", conversationRecordService.lastAssistantAnswer);
         assertEquals(0, aiProxyClient.memoryAppendCount);
@@ -163,6 +203,8 @@ class BotServiceTest
         List<String> chunks = botService.streamChat(request()).collectList().block();
 
         assertEquals(List.of("请先检查网线，", "再确认 Wi-Fi 和 DNS。"), chunks);
+        assertEquals("chat_with_kb", aiProxyStreamClient.lastScene);
+        assertEquals("it_support", aiProxyStreamClient.lastAgentCode);
         assertEquals("test-session", conversationRecordService.lastConversationId);
         assertEquals("电脑上不了网怎么处理？", conversationRecordService.lastUserMessage);
         assertEquals("请先检查网线，再确认 Wi-Fi 和 DNS。", conversationRecordService.lastAssistantAnswer);
@@ -369,6 +411,23 @@ class BotServiceTest
     }
 
     @Test
+    void 流式低分命中时使用普通兜底模型()
+    {
+        BotProperties properties = botProperties();
+        StubKbClient kbClient = new StubKbClient(properties, item(1L, "电脑无法联网怎么办？", "检查网线和 Wi-Fi。", 0.2D));
+        StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
+        StubAiProxyStreamClient aiProxyStreamClient = new StubAiProxyStreamClient();
+        StubConversationRecordService conversationRecordService = new StubConversationRecordService();
+        BotService botService = new BotService(kbClient, aiProxyClient, aiProxyStreamClient, properties,
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
+
+        botService.streamChat(request()).collectList().block();
+
+        assertEquals("chat_general", aiProxyStreamClient.lastScene);
+        assertEquals("it_support", aiProxyStreamClient.lastAgentCode);
+    }
+
+    @Test
     void 明确表达代理网络环境时写入网络长期记忆()
     {
         BotProperties properties = botProperties();
@@ -451,6 +510,10 @@ class BotServiceTest
 
         private String lastSystemPrompt;
 
+        private String lastScene;
+
+        private String lastAgentCode;
+
         private int memoryAppendCount;
 
         private String lastMemoryUserMessage;
@@ -479,7 +542,7 @@ class BotServiceTest
         }
 
         @Override
-        public AiChatResponse chat(String conversationId, String systemPrompt, String message)
+        public AiChatResponse chat(String conversationId, String systemPrompt, String message, String scene, String agentCode)
         {
             if (throwOnChat)
             {
@@ -487,6 +550,8 @@ class BotServiceTest
             }
             chatCount++;
             lastSystemPrompt = systemPrompt;
+            lastScene = scene;
+            lastAgentCode = agentCode;
             AiChatResponse response = new AiChatResponse();
             response.setConversationId(conversationId);
             response.setContent(responseContent);
@@ -527,14 +592,20 @@ class BotServiceTest
     {
         private List<String> chunks = List.of("AI 回答");
 
+        private String lastScene;
+
+        private String lastAgentCode;
+
         StubAiProxyStreamClient()
         {
             super(org.springframework.web.reactive.function.client.WebClient.builder());
         }
 
         @Override
-        public Flux<String> streamChat(String conversationId, String systemPrompt, String message)
+        public Flux<String> streamChat(String conversationId, String systemPrompt, String message, String scene, String agentCode)
         {
+            lastScene = scene;
+            lastAgentCode = agentCode;
             return Flux.fromIterable(chunks);
         }
     }
