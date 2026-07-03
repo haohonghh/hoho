@@ -3,7 +3,9 @@ package com.hoho.ai.service;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.hoho.ai.model.request.MemoryDebugQueryRequest;
 import com.hoho.ai.model.request.MemoryAppendRequest;
+import com.hoho.ai.model.response.MemoryDebugResponse;
 import com.hoho.common.core.utils.StringUtils;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -55,6 +57,39 @@ public class MemoryService
         }
         chatMemory.add(conversationId, messages);
         memorySummaryService.summarizeIfNecessary(conversationId);
+    }
+
+    public MemoryDebugResponse debug(MemoryDebugQueryRequest request)
+    {
+        String conversationId = requireText(request == null ? null : request.getConversationId(), "会话编号不能为空");
+        List<Message> messages = chatMemory.get(conversationId);
+
+        MemoryDebugResponse response = new MemoryDebugResponse();
+        response.setConversationId(conversationId);
+        response.setTotalMessages(messages == null ? 0 : messages.size());
+        response.setMessages(toMessageItems(messages));
+        return response;
+    }
+
+    private List<MemoryDebugResponse.MemoryMessageItem> toMessageItems(List<Message> messages)
+    {
+        List<MemoryDebugResponse.MemoryMessageItem> items = new ArrayList<>();
+        if (messages == null)
+        {
+            return items;
+        }
+        for (Message message : messages)
+        {
+            if (message == null)
+            {
+                continue;
+            }
+            MemoryDebugResponse.MemoryMessageItem item = new MemoryDebugResponse.MemoryMessageItem();
+            item.setRole(message.getMessageType() == null ? null : message.getMessageType().name());
+            item.setContent(message.getText());
+            items.add(item);
+        }
+        return items;
     }
 
     private String requireText(String value, String message)

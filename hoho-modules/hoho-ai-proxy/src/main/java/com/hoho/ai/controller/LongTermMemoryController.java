@@ -5,6 +5,7 @@ import java.util.List;
 import com.hoho.ai.domain.AiLongTermMemory;
 import com.hoho.ai.model.request.LongTermMemoryQueryRequest;
 import com.hoho.ai.model.request.LongTermMemoryUpsertRequest;
+import com.hoho.ai.model.response.LongTermMemoryProfileResponse;
 import com.hoho.ai.service.LongTermMemoryService;
 import com.hoho.common.core.domain.R;
 import org.slf4j.Logger;
@@ -56,6 +57,20 @@ public class LongTermMemoryController
         catch (Exception e)
         {
             log.error("查询长期记忆失败", e);
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @PostMapping("/profile")
+    public R<LongTermMemoryProfileResponse> profile(@RequestBody LongTermMemoryQueryRequest request)
+    {
+        try
+        {
+            return R.ok(longTermMemoryService.profile(request));
+        }
+        catch (Exception e)
+        {
+            log.error("查询长期记忆画像失败", e);
             return R.fail(e.getMessage());
         }
     }

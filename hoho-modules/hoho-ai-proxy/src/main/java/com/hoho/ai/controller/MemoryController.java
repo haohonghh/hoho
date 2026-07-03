@@ -1,6 +1,8 @@
 package com.hoho.ai.controller;
 
 import com.hoho.ai.model.request.MemoryAppendRequest;
+import com.hoho.ai.model.request.MemoryDebugQueryRequest;
+import com.hoho.ai.model.response.MemoryDebugResponse;
 import com.hoho.ai.service.MemoryService;
 import com.hoho.common.core.domain.R;
 import org.slf4j.Logger;
@@ -39,6 +41,20 @@ public class MemoryController
         catch (Exception e)
         {
             log.error("追加短期记忆失败", e);
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @PostMapping("/debug")
+    public R<MemoryDebugResponse> debug(@RequestBody MemoryDebugQueryRequest request)
+    {
+        try
+        {
+            return R.ok(memoryService.debug(request));
+        }
+        catch (Exception e)
+        {
+            log.error("查询短期记忆调试信息失败", e);
             return R.fail(e.getMessage());
         }
     }

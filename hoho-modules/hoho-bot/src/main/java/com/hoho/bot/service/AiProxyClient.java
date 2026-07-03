@@ -2,9 +2,11 @@ package com.hoho.bot.service;
 
 import com.hoho.bot.api.RemoteAiProxyService;
 import com.hoho.bot.model.request.AiChatRequest;
+import com.hoho.bot.model.request.AiLongTermMemoryProfileQueryRequest;
 import com.hoho.bot.model.request.AiLongTermMemoryUpsertRequest;
 import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.response.AiChatResponse;
+import com.hoho.bot.model.response.LongTermMemoryProfileResponse;
 import com.hoho.common.core.domain.R;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,6 +132,29 @@ public class AiProxyClient
         }
         log.info("写入AI长期记忆完成 userId={}, conversationId={}, cost={}ms",
                 userId, conversationId, System.currentTimeMillis() - start);
+    }
+
+    public LongTermMemoryProfileResponse profile(Long userId)
+    {
+        AiLongTermMemoryProfileQueryRequest request = new AiLongTermMemoryProfileQueryRequest();
+        request.setUserId(userId);
+
+        long start = System.currentTimeMillis();
+        log.info("查询AI长期记忆画像开始 userId={}", userId);
+        R<LongTermMemoryProfileResponse> response = remoteAiProxyService.profile(request);
+        if (response == null || R.isError(response))
+        {
+            log.warn("查询AI长期记忆画像失败 userId={}, cost={}ms, reason={}",
+                    userId, System.currentTimeMillis() - start, response == null ? "无响应" : response.getMsg());
+            throw new IllegalStateException(response == null ? "AI长期记忆画像查询无响应" : response.getMsg());
+        }
+        log.info("查询AI长期记忆画像完成 userId={}, hasPreferences={}, hasProfile={}, hasEnvironment={}, cost={}ms",
+                userId,
+                response.getData() != null && response.getData().getPreferences() != null && !response.getData().getPreferences().isEmpty(),
+                response.getData() != null && response.getData().getProfile() != null && !response.getData().getProfile().isEmpty(),
+                response.getData() != null && response.getData().getEnvironment() != null && !response.getData().getEnvironment().isEmpty(),
+                System.currentTimeMillis() - start);
+        return response.getData();
     }
 
     private int length(String value)

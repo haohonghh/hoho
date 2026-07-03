@@ -6,6 +6,7 @@ import com.hoho.bot.api.RemoteAiProxyService;
 import com.hoho.bot.api.RemoteKbService;
 import com.hoho.bot.config.BotProperties;
 import com.hoho.bot.model.request.AiChatRequest;
+import com.hoho.bot.model.request.AiLongTermMemoryProfileQueryRequest;
 import com.hoho.bot.model.request.AiLongTermMemoryUpsertRequest;
 import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.request.BotChatRequest;
@@ -15,6 +16,7 @@ import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.bot.model.response.BotChatResponse;
 import com.hoho.bot.model.response.KbSearchItem;
 import com.hoho.bot.model.response.KbSearchResponse;
+import com.hoho.bot.model.response.LongTermMemoryProfileResponse;
 import com.hoho.common.core.domain.R;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
@@ -33,7 +35,7 @@ class BotServiceTest
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
 
         BotChatResponse response = botService.chat(request());
 
@@ -56,7 +58,7 @@ class BotServiceTest
         aiProxyClient.responseContent = "请先检查网线和 Wi-Fi，再确认 IP 与 DNS。";
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
 
         BotChatResponse response = botService.chat(request());
 
@@ -79,7 +81,7 @@ class BotServiceTest
         aiProxyClient.responseContent = "请提供更多问题现象。";
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
 
         BotChatResponse response = botService.chat(request());
 
@@ -101,7 +103,7 @@ class BotServiceTest
         aiProxyClient.responseContent = "可以继续检查网关配置。";
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
 
         BotChatResponse response = botService.chat(request());
 
@@ -118,7 +120,7 @@ class BotServiceTest
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
         BotChatRequest request = request();
         request.setConversationId(null);
 
@@ -136,7 +138,7 @@ class BotServiceTest
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
 
         List<String> chunks = botService.streamChat(request()).collectList().block();
 
@@ -156,7 +158,7 @@ class BotServiceTest
         aiProxyStreamClient.chunks = List.of("请先检查网线，", "再确认 Wi-Fi 和 DNS。");
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, aiProxyStreamClient, properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
 
         List<String> chunks = botService.streamChat(request()).collectList().block();
 
@@ -176,7 +178,7 @@ class BotServiceTest
         aiProxyClient.responseContent = "请先确认网络连接状态。";
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
 
         BotChatResponse response = botService.chat(request());
 
@@ -195,7 +197,7 @@ class BotServiceTest
         aiProxyClient.throwOnChat = true;
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
 
         BotChatResponse response = botService.chat(request());
 
@@ -213,7 +215,7 @@ class BotServiceTest
         aiProxyClient.throwOnAppendMemory = true;
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
 
         BotChatResponse response = botService.chat(request());
 
@@ -231,7 +233,7 @@ class BotServiceTest
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
         BotChatRequest request = request();
         request.setMessage("以后都用中文，回答简洁一点。");
 
@@ -252,7 +254,7 @@ class BotServiceTest
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
 
         botService.chat(request());
 
@@ -267,7 +269,7 @@ class BotServiceTest
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
         BotChatRequest request = request();
         request.setMessage("之后请都用中文回复我。");
 
@@ -287,7 +289,7 @@ class BotServiceTest
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
         BotChatRequest request = request();
         request.setMessage("以后回答请分步骤说明。");
 
@@ -307,7 +309,7 @@ class BotServiceTest
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
         BotChatRequest request = request();
         request.setMessage("我是运维工程师。");
 
@@ -327,7 +329,7 @@ class BotServiceTest
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
         BotChatRequest request = request();
         request.setMessage("我们公司电脑都是 Windows。");
 
@@ -340,6 +342,33 @@ class BotServiceTest
     }
 
     @Test
+    void Ai路径会把长期记忆画像注入系统提示词()
+    {
+        BotProperties properties = botProperties();
+        StubKbClient kbClient = new StubKbClient(properties, item(1L, "打印机问题", "重启打印机。", 0.2D));
+        StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
+        aiProxyClient.responseContent = "可以继续检查网关配置。";
+        LongTermMemoryProfileResponse profile = new LongTermMemoryProfileResponse();
+        profile.getPreferences().put("reply_language", "中文");
+        profile.getProfile().put("role", "运维");
+        profile.getEnvironment().put("os", "Windows");
+        aiProxyClient.profileResponse = profile;
+        StubConversationRecordService conversationRecordService = new StubConversationRecordService();
+        BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
+
+        BotChatResponse response = botService.chat(request());
+
+        assertEquals("ai", response.getSource());
+        assertTrue(aiProxyClient.lastSystemPrompt.contains("用户长期偏好"));
+        assertTrue(aiProxyClient.lastSystemPrompt.contains("reply_language=中文"));
+        assertTrue(aiProxyClient.lastSystemPrompt.contains("用户身份信息"));
+        assertTrue(aiProxyClient.lastSystemPrompt.contains("role=运维"));
+        assertTrue(aiProxyClient.lastSystemPrompt.contains("用户环境信息"));
+        assertTrue(aiProxyClient.lastSystemPrompt.contains("os=Windows"));
+    }
+
+    @Test
     void 明确表达代理网络环境时写入网络长期记忆()
     {
         BotProperties properties = botProperties();
@@ -347,7 +376,7 @@ class BotServiceTest
         StubAiProxyClient aiProxyClient = new StubAiProxyClient(properties);
         StubConversationRecordService conversationRecordService = new StubConversationRecordService();
         BotService botService = new BotService(kbClient, aiProxyClient, new StubAiProxyStreamClient(), properties,
-                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient));
+                conversationRecordService, new StubLongTermMemoryCaptureService(aiProxyClient), new BotUserContext());
         BotChatRequest request = request();
         request.setMessage("我们公司网络需要走代理。");
 
@@ -442,6 +471,8 @@ class BotServiceTest
 
         private String lastLongTermMemoryValue;
 
+        private LongTermMemoryProfileResponse profileResponse = new LongTermMemoryProfileResponse();
+
         StubAiProxyClient(BotProperties properties)
         {
             super(new StubRemoteAiProxyService());
@@ -483,6 +514,12 @@ class BotServiceTest
             lastLongTermMemoryType = memoryType;
             lastLongTermMemoryKey = memoryKey;
             lastLongTermMemoryValue = memoryValue;
+        }
+
+        @Override
+        public LongTermMemoryProfileResponse profile(Long userId)
+        {
+            return profileResponse;
         }
     }
 
@@ -591,6 +628,12 @@ class BotServiceTest
         public R<Void> upsertLongTermMemory(AiLongTermMemoryUpsertRequest request)
         {
             return R.ok();
+        }
+
+        @Override
+        public R<LongTermMemoryProfileResponse> profile(AiLongTermMemoryProfileQueryRequest request)
+        {
+            return R.ok(new LongTermMemoryProfileResponse());
         }
     }
 }

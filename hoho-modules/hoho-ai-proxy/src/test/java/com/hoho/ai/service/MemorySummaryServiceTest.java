@@ -13,6 +13,7 @@ import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.UserMessage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MemorySummaryServiceTest
@@ -70,5 +71,34 @@ class MemorySummaryServiceTest
         assertEquals(2, messages.size());
         assertEquals("用户问题1", messages.get(0).getText());
         assertEquals("助手回答1", messages.get(1).getText());
+    }
+
+    @Test
+    void 可返回摘要调试信息用于判断本轮是否触发压缩()
+    {
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .chatMemoryRepository(new InMemoryChatMemoryRepository())
+                .maxMessages(20)
+                .build();
+        chatMemory.add("session-debug-2", List.of(
+                new UserMessage("用户问题1"),
+                new AssistantMessage("助手回答1"),
+                new UserMessage("用户问题2"),
+                new AssistantMessage("助手回答2"),
+                new UserMessage("用户问题3"),
+                new AssistantMessage("助手回答3")));
+
+        AiProxyProperties properties = new AiProxyProperties();
+        properties.getMemory().setSummaryTriggerMessageCount(4);
+        properties.getMemory().setSummaryKeepRecentMessages(2);
+        MemorySummaryService summaryService = new MemorySummaryService(chatMemory, properties);
+
+        MemorySummaryService.SummaryDebugInfo debugInfo = summaryService.summarizeIfNecessary("session-debug-2");
+
+        assertTrue(debugInfo.isTriggered());
+        assertEquals(6, debugInfo.getOriginalMessageCount());
+        assertEquals(3, debugInfo.getFinalMessageCount());
+        assertEquals(2, debugInfo.getKeepRecentMessages());
+        assertFalse(debugInfo.getSummaryPreview().isBlank());
     }
 }

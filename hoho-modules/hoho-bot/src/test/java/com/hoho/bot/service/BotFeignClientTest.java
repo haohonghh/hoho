@@ -5,6 +5,7 @@ import java.util.List;
 import com.hoho.bot.api.RemoteAiProxyService;
 import com.hoho.bot.api.RemoteKbService;
 import com.hoho.bot.model.request.AiChatRequest;
+import com.hoho.bot.model.request.AiLongTermMemoryProfileQueryRequest;
 import com.hoho.bot.model.request.AiLongTermMemoryUpsertRequest;
 import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.request.KbQaRequest;
@@ -12,6 +13,7 @@ import com.hoho.bot.model.request.KbSearchRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.bot.model.response.KbSearchItem;
 import com.hoho.bot.model.response.KbSearchResponse;
+import com.hoho.bot.model.response.LongTermMemoryProfileResponse;
 import com.hoho.common.core.domain.R;
 import org.junit.jupiter.api.Test;
 
@@ -59,6 +61,18 @@ class BotFeignClientTest
         assertEquals("session-1", remoteAiProxyService.lastMemoryRequest.getConversationId());
         assertEquals("用户问题", remoteAiProxyService.lastMemoryRequest.getUserMessage());
         assertEquals("助手回答", remoteAiProxyService.lastMemoryRequest.getAssistantMessage());
+    }
+
+    @Test
+    void 对话客户端通过Feign接口查询长期记忆画像()
+    {
+        StubRemoteAiProxyService remoteAiProxyService = new StubRemoteAiProxyService();
+        AiProxyClient aiProxyClient = new AiProxyClient(remoteAiProxyService);
+
+        LongTermMemoryProfileResponse response = aiProxyClient.profile(1001L);
+
+        assertEquals(1001L, remoteAiProxyService.lastProfileRequest.getUserId());
+        assertEquals("中文", response.getPreferences().get("reply_language"));
     }
 
     @Test
@@ -137,6 +151,8 @@ class BotFeignClientTest
 
         private AiMemoryAppendRequest lastMemoryRequest;
 
+        private AiLongTermMemoryProfileQueryRequest lastProfileRequest;
+
         @Override
         public R<AiChatResponse> chat(AiChatRequest request)
         {
@@ -158,6 +174,16 @@ class BotFeignClientTest
         public R<Void> upsertLongTermMemory(AiLongTermMemoryUpsertRequest request)
         {
             return R.ok();
+        }
+
+        @Override
+        public R<LongTermMemoryProfileResponse> profile(AiLongTermMemoryProfileQueryRequest request)
+        {
+            lastProfileRequest = request;
+            LongTermMemoryProfileResponse response = new LongTermMemoryProfileResponse();
+            response.setUserId(request.getUserId());
+            response.getPreferences().put("reply_language", "中文");
+            return R.ok(response);
         }
     }
 }

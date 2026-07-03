@@ -2,9 +2,11 @@ package com.hoho.bot.api.factory;
 
 import com.hoho.bot.api.RemoteAiProxyService;
 import com.hoho.bot.model.request.AiChatRequest;
+import com.hoho.bot.model.request.AiLongTermMemoryProfileQueryRequest;
 import com.hoho.bot.model.request.AiLongTermMemoryUpsertRequest;
 import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.response.AiChatResponse;
+import com.hoho.bot.model.response.LongTermMemoryProfileResponse;
 import com.hoho.common.core.domain.R;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +45,12 @@ public class RemoteAiProxyFallbackFactory implements FallbackFactory<RemoteAiPro
             public R<Void> upsertLongTermMemory(AiLongTermMemoryUpsertRequest request)
             {
                 return R.fail("AI长期记忆写入失败:" + throwable.getMessage());
+            }
+
+            @Override
+            public R<LongTermMemoryProfileResponse> profile(AiLongTermMemoryProfileQueryRequest request)
+            {
+                return R.fail("AI长期记忆画像查询失败:" + throwable.getMessage());
             }
         };
     }

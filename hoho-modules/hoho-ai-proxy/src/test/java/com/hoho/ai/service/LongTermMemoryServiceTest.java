@@ -8,6 +8,7 @@ import com.hoho.ai.domain.AiLongTermMemory;
 import com.hoho.ai.mapper.AiLongTermMemoryMapper;
 import com.hoho.ai.model.request.LongTermMemoryQueryRequest;
 import com.hoho.ai.model.request.LongTermMemoryUpsertRequest;
+import com.hoho.ai.model.response.LongTermMemoryProfileResponse;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -72,6 +73,39 @@ class LongTermMemoryServiceTest
         assertEquals(1, result.size());
         assertEquals(1001L, result.get(0).getUserId());
         assertEquals("网络运维部", result.get(0).getMemoryValue());
+    }
+
+    @Test
+    void 可按用户聚合返回偏好身份与环境画像()
+    {
+        InMemoryAiLongTermMemoryMapper mapper = new InMemoryAiLongTermMemoryMapper();
+        LongTermMemoryService service = new LongTermMemoryService(mapper);
+
+        service.upsert(memory(1001L, "session-1", "preference", "reply_language", "中文"));
+        service.upsert(memory(1001L, "session-1", "profile", "role", "运维"));
+        service.upsert(memory(1001L, "session-1", "environment", "os", "Windows"));
+        service.upsert(memory(1001L, "session-1", "environment", "network", "代理网络"));
+
+        LongTermMemoryQueryRequest query = new LongTermMemoryQueryRequest();
+        query.setUserId(1001L);
+        LongTermMemoryProfileResponse response = service.profile(query);
+
+        assertEquals(1001L, response.getUserId());
+        assertEquals("中文", response.getPreferences().get("reply_language"));
+        assertEquals("运维", response.getProfile().get("role"));
+        assertEquals("Windows", response.getEnvironment().get("os"));
+        assertEquals("代理网络", response.getEnvironment().get("network"));
+    }
+
+    private LongTermMemoryUpsertRequest memory(Long userId, String conversationId, String memoryType, String memoryKey, String memoryValue)
+    {
+        LongTermMemoryUpsertRequest request = new LongTermMemoryUpsertRequest();
+        request.setUserId(userId);
+        request.setConversationId(conversationId);
+        request.setMemoryType(memoryType);
+        request.setMemoryKey(memoryKey);
+        request.setMemoryValue(memoryValue);
+        return request;
     }
 
     private static class InMemoryAiLongTermMemoryMapper implements AiLongTermMemoryMapper

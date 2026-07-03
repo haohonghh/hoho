@@ -3,8 +3,10 @@ package com.hoho.bot.api;
 import com.hoho.bot.api.factory.RemoteAiProxyFallbackFactory;
 import com.hoho.bot.model.request.AiChatRequest;
 import com.hoho.bot.model.request.AiLongTermMemoryUpsertRequest;
+import com.hoho.bot.model.request.AiLongTermMemoryProfileQueryRequest;
 import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.response.AiChatResponse;
+import com.hoho.bot.model.response.LongTermMemoryProfileResponse;
 import com.hoho.common.core.domain.R;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,4 +47,13 @@ public interface RemoteAiProxyService
      */
     @PostMapping("/ai/memory/long-term/upsert")
     R<Void> upsertLongTermMemory(@RequestBody AiLongTermMemoryUpsertRequest request);
+
+    /**
+     * 查询AI长期记忆画像。
+     *
+     * @param request 长期记忆画像查询请求
+     * @return 画像结果
+     */
+    @PostMapping("/ai/memory/long-term/profile")
+    R<LongTermMemoryProfileResponse> profile(@RequestBody AiLongTermMemoryProfileQueryRequest request);
 }

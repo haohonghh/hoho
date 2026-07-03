@@ -3,6 +3,7 @@ package com.hoho.bot.service;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import com.hoho.bot.config.BotProperties;
@@ -11,6 +12,7 @@ import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.bot.model.response.BotChatResponse;
 import com.hoho.bot.model.response.KbSearchItem;
 import com.hoho.bot.model.response.KbSearchResponse;
+import com.hoho.bot.model.response.LongTermMemoryProfileResponse;
 import com.hoho.common.core.utils.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +41,11 @@ public class BotService
 
     private final LongTermMemoryCaptureService longTermMemoryCaptureService;
 
+    private final BotUserContext botUserContext;
+
     public BotService(KbClient kbClient, AiProxyClient aiProxyClient, AiProxyStreamClient aiProxyStreamClient, BotProperties botProperties,
-            ConversationRecordService conversationRecordService, LongTermMemoryCaptureService longTermMemoryCaptureService)
+            ConversationRecordService conversationRecordService, LongTermMemoryCaptureService longTermMemoryCaptureService,
+            BotUserContext botUserContext)
     {
         this.kbClient = kbClient;
         this.aiProxyClient = aiProxyClient;
@@ -48,6 +53,7 @@ public class BotService
         this.botProperties = botProperties;
         this.conversationRecordService = conversationRecordService;
         this.longTermMemoryCaptureService = longTermMemoryCaptureService;
+        this.botUserContext = botUserContext;
     }
 
     /**
@@ -100,12 +106,12 @@ public class BotService
         // 路径二：分数达到辅助阈值，将知识库资料注入 system prompt，调用 AI 生成回答
         if (best != null && best.getScore() != null && best.getScore() >= botProperties.getAnswer().getAssistMinScore())
         {
-            return aiWithFallback(conversationId, buildAssistSystemPrompt(best), request.getMessage(),
+            return aiWithFallback(conversationId, enrichSystemPrompt(buildAssistSystemPrompt(best)), request.getMessage(),
                     fromAiWithKbSource(conversationId, best, references), start);
         }
 
         // 路径三：知识库未命中，仅用兜底 system prompt 让 AI 生成回答
-        return aiWithFallback(conversationId, botProperties.getAnswer().getFallbackSystemPrompt(), request.getMessage(),
+        return aiWithFallback(conversationId, enrichSystemPrompt(botProperties.getAnswer().getFallbackSystemPrompt()), request.getMessage(),
                 fromAiSource(conversationId, references), start);
     }
 
@@ -143,11 +149,11 @@ public class BotService
 
         if (best != null && best.getScore() != null && best.getScore() >= botProperties.getAnswer().getAssistMinScore())
         {
-            return streamAiWithFallback(conversationId, buildAssistSystemPrompt(best), request.getMessage(),
+            return streamAiWithFallback(conversationId, enrichSystemPrompt(buildAssistSystemPrompt(best)), request.getMessage(),
                     fromAiWithKbSource(conversationId, best, references), start);
         }
 
-        return streamAiWithFallback(conversationId, botProperties.getAnswer().getFallbackSystemPrompt(),
+        return streamAiWithFallback(conversationId, enrichSystemPrompt(botProperties.getAnswer().getFallbackSystemPrompt()),
                 request.getMessage(), fromAiSource(conversationId, references), start);
     }
 
@@ -350,6 +356,63 @@ public class BotService
         prompt.append("知识库问题：").append(best.getQuestion()).append('\n');
         prompt.append("知识库答案：").append(best.getAnswer());
         return prompt.toString();
+    }
+
+    private String enrichSystemPrompt(String baseSystemPrompt)
+    {
+        if (botUserContext == null)
+        {
+            return baseSystemPrompt;
+        }
+        try
+        {
+            BotUserContext.CurrentUser currentUser = botUserContext.currentUser();
+            if (currentUser == null || currentUser.getUserId() == null)
+            {
+                return baseSystemPrompt;
+            }
+            LongTermMemoryProfileResponse profile = aiProxyClient.profile(currentUser.getUserId());
+            String memoryPrompt = buildLongTermMemoryPrompt(profile);
+            if (StringUtils.isBlank(memoryPrompt))
+            {
+                return baseSystemPrompt;
+            }
+            return memoryPrompt + "\n" + baseSystemPrompt;
+        }
+        catch (Exception e)
+        {
+            log.warn("读取长期记忆画像失败，本轮继续按原提示词回答 reason={}", e.getMessage());
+            return baseSystemPrompt;
+        }
+    }
+
+    private String buildLongTermMemoryPrompt(LongTermMemoryProfileResponse profile)
+    {
+        if (profile == null)
+        {
+            return null;
+        }
+        StringBuilder builder = new StringBuilder();
+        appendSection(builder, "用户长期偏好", profile.getPreferences());
+        appendSection(builder, "用户身份信息", profile.getProfile());
+        appendSection(builder, "用户环境信息", profile.getEnvironment());
+        if (builder.length() == 0)
+        {
+            return null;
+        }
+        builder.append("以上信息来自用户长期记忆，仅在与当前问题相关时使用，不要生造不存在的事实。");
+        return builder.toString();
+    }
+
+    private void appendSection(StringBuilder builder, String title, Map<String, String> values)
+    {
+        if (values == null || values.isEmpty())
+        {
+            return;
+        }
+        builder.append(title).append("：");
+        values.forEach((key, value) -> builder.append(key).append('=').append(value).append('；'));
+        builder.append('\n');
     }
 
     /**
