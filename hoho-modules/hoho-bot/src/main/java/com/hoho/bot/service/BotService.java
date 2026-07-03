@@ -15,6 +15,7 @@ import com.hoho.common.core.utils.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 /**
  * 文本机器人服务
@@ -30,17 +31,23 @@ public class BotService
 
     private final AiProxyClient aiProxyClient;
 
+    private final AiProxyStreamClient aiProxyStreamClient;
+
     private final BotProperties botProperties;
 
     private final ConversationRecordService conversationRecordService;
 
-    public BotService(KbClient kbClient, AiProxyClient aiProxyClient, BotProperties botProperties,
-            ConversationRecordService conversationRecordService)
+    private final LongTermMemoryCaptureService longTermMemoryCaptureService;
+
+    public BotService(KbClient kbClient, AiProxyClient aiProxyClient, AiProxyStreamClient aiProxyStreamClient, BotProperties botProperties,
+            ConversationRecordService conversationRecordService, LongTermMemoryCaptureService longTermMemoryCaptureService)
     {
         this.kbClient = kbClient;
         this.aiProxyClient = aiProxyClient;
+        this.aiProxyStreamClient = aiProxyStreamClient;
         this.botProperties = botProperties;
         this.conversationRecordService = conversationRecordService;
+        this.longTermMemoryCaptureService = longTermMemoryCaptureService;
     }
 
     /**
@@ -77,10 +84,7 @@ public class BotService
 
         // 取用户自定义的 topK，若未传则使用配置默认值；最小为 1
         int topK = request.getTopK() == null ? botProperties.getAnswer().getTopK() : request.getTopK();
-        KbSearchResponse kbSearchResponse = kbClient.hybridSearch(request.getMessage(), Math.max(1, topK));
-        List<KbSearchItem> references = kbSearchResponse == null || kbSearchResponse.getItems() == null
-                ? Collections.emptyList()
-                : kbSearchResponse.getItems();
+        List<KbSearchItem> references = searchReferences(request.getMessage(), Math.max(1, topK), conversationId);
 
         // 从知识库检索结果中取出相似度分数最高的一条，作为后续路由的判断依据
         KbSearchItem best = references.stream()
@@ -96,20 +100,55 @@ public class BotService
         // 路径二：分数达到辅助阈值，将知识库资料注入 system prompt，调用 AI 生成回答
         if (best != null && best.getScore() != null && best.getScore() >= botProperties.getAnswer().getAssistMinScore())
         {
-            AiChatResponse aiResponse = aiProxyClient.chat(
-                    conversationId,
-                    buildAssistSystemPrompt(best),
-                    request.getMessage());
-            return recordAndReturn(fromAiWithKb(conversationId, aiResponse, best, references), request.getMessage(), false,
-                    start);
+            return aiWithFallback(conversationId, buildAssistSystemPrompt(best), request.getMessage(),
+                    fromAiWithKbSource(conversationId, best, references), start);
         }
 
         // 路径三：知识库未命中，仅用兜底 system prompt 让 AI 生成回答
-        AiChatResponse aiResponse = aiProxyClient.chat(
-                conversationId,
-                botProperties.getAnswer().getFallbackSystemPrompt(),
-                request.getMessage());
-        return recordAndReturn(fromAi(conversationId, aiResponse, references), request.getMessage(), false, start);
+        return aiWithFallback(conversationId, botProperties.getAnswer().getFallbackSystemPrompt(), request.getMessage(),
+                fromAiSource(conversationId, references), start);
+    }
+
+    /**
+     * 流式对话入口。
+     *
+     * <p>业务层流式接口。会先完成会话编号解析、用户消息持久化与知识库路由判断；
+     * 若命中高分知识库则直接输出单片答案，若进入 AI 路径则透传 AI 代理的逐片输出，
+     * 并在流结束时将完整助手回复落库。</p>
+     *
+     * @param request 对话请求
+     * @return 文本分片事件流
+     */
+    public Flux<String> streamChat(BotChatRequest request)
+    {
+        validate(request);
+
+        String conversationId = resolveConversationId(request.getConversationId());
+        long start = System.currentTimeMillis();
+        log.info("Bot流式对话开始 conversationId={}, messageLength={}, requestTopK={}", conversationId,
+                request.getMessage().length(), request.getTopK());
+        conversationRecordService.recordUserMessage(conversationId, request.getMessage());
+
+        int topK = request.getTopK() == null ? botProperties.getAnswer().getTopK() : request.getTopK();
+        List<KbSearchItem> references = searchReferences(request.getMessage(), Math.max(1, topK), conversationId);
+        KbSearchItem best = references.stream()
+                .max(Comparator.comparing(item -> item.getScore() == null ? 0D : item.getScore()))
+                .orElse(null);
+
+        if (best != null && best.getScore() != null && best.getScore() >= botProperties.getAnswer().getDirectMinScore())
+        {
+            BotChatResponse response = recordAndReturn(fromKb(conversationId, best, references), request.getMessage(), true, start);
+            return Flux.just(response.getAnswer());
+        }
+
+        if (best != null && best.getScore() != null && best.getScore() >= botProperties.getAnswer().getAssistMinScore())
+        {
+            return streamAiWithFallback(conversationId, buildAssistSystemPrompt(best), request.getMessage(),
+                    fromAiWithKbSource(conversationId, best, references), start);
+        }
+
+        return streamAiWithFallback(conversationId, botProperties.getAnswer().getFallbackSystemPrompt(),
+                request.getMessage(), fromAiSource(conversationId, references), start);
     }
 
     /**
@@ -158,6 +197,16 @@ public class BotService
         return response;
     }
 
+    private BotChatResponse fromAiWithKbSource(String conversationId, KbSearchItem best, List<KbSearchItem> references)
+    {
+        BotChatResponse response = new BotChatResponse();
+        response.setConversationId(conversationId);
+        response.setSource("ai_with_kb");
+        response.setScore(best == null ? null : best.getScore());
+        response.setReferences(references);
+        return response;
+    }
+
     /**
      * 构建"纯 AI 兜底"的响应对象。
      *
@@ -180,6 +229,27 @@ public class BotService
         return response;
     }
 
+    private BotChatResponse fromAiSource(String conversationId, List<KbSearchItem> references)
+    {
+        BotChatResponse response = new BotChatResponse();
+        response.setConversationId(conversationId);
+        response.setSource("ai");
+        response.setScore(null);
+        response.setReferences(references);
+        return response;
+    }
+
+    private BotChatResponse fromFallback(String conversationId, List<KbSearchItem> references)
+    {
+        BotChatResponse response = new BotChatResponse();
+        response.setConversationId(conversationId);
+        response.setAnswer(botProperties.getAnswer().getServiceDegradeReply());
+        response.setSource("fallback");
+        response.setScore(null);
+        response.setReferences(references);
+        return response;
+    }
+
     /**
      * 持久化助手回复并原样返回响应对象。
      *
@@ -193,13 +263,73 @@ public class BotService
         conversationRecordService.recordAssistantMessage(response.getConversationId(), response);
         if (appendMemory)
         {
-            aiProxyClient.appendMemory(response.getConversationId(), userMessage, response.getAnswer());
+            try
+            {
+                aiProxyClient.appendMemory(response.getConversationId(), userMessage, response.getAnswer());
+            }
+            catch (Exception e)
+            {
+                log.warn("追加短期记忆失败，但本次回答继续返回 conversationId={}, reason={}",
+                        response.getConversationId(), e.getMessage());
+            }
         }
         log.info("Bot对话完成 conversationId={}, source={}, score={}, referenceCount={}, appendMemory={}, cost={}ms",
                 response.getConversationId(), response.getSource(), response.getScore(),
                 response.getReferences() == null ? 0 : response.getReferences().size(), appendMemory,
                 System.currentTimeMillis() - start);
+        longTermMemoryCaptureService.captureIfNecessary(response.getConversationId(), userMessage, response);
         return response;
+    }
+
+    private List<KbSearchItem> searchReferences(String message, int topK, String conversationId)
+    {
+        try
+        {
+            KbSearchResponse kbSearchResponse = kbClient.hybridSearch(message, topK);
+            return kbSearchResponse == null || kbSearchResponse.getItems() == null
+                    ? Collections.emptyList()
+                    : kbSearchResponse.getItems();
+        }
+        catch (Exception e)
+        {
+            log.warn("知识库检索失败，降级走AI兜底 conversationId={}, reason={}", conversationId, e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private BotChatResponse aiWithFallback(String conversationId, String systemPrompt, String message,
+            BotChatResponse template, long start)
+    {
+        try
+        {
+            AiChatResponse aiResponse = aiProxyClient.chat(conversationId, systemPrompt, message);
+            template.setAnswer(aiResponse == null ? null : aiResponse.getContent());
+            return recordAndReturn(template, message, false, start);
+        }
+        catch (Exception e)
+        {
+            log.warn("AI调用失败，返回固定降级话术 conversationId={}, reason={}", conversationId, e.getMessage());
+            return recordAndReturn(fromFallback(conversationId, template.getReferences()), message, false, start);
+        }
+    }
+
+    private Flux<String> streamAiWithFallback(String conversationId, String systemPrompt, String message,
+            BotChatResponse template, long start)
+    {
+        StringBuilder answerBuilder = new StringBuilder();
+        return aiProxyStreamClient.streamChat(conversationId, systemPrompt, message)
+                .doOnNext(answerBuilder::append)
+                .doOnComplete(() -> {
+                    template.setAnswer(answerBuilder.toString());
+                    recordAndReturn(template, message, false, start);
+                })
+                .onErrorResume(error -> {
+                    log.warn("AI流式调用失败，返回固定降级话术 conversationId={}, reason={}", conversationId,
+                            error.getMessage());
+                    BotChatResponse fallback = recordAndReturn(fromFallback(conversationId, template.getReferences()),
+                            message, false, start);
+                    return Flux.just(fallback.getAnswer());
+                });
     }
 
     /**

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hoho.ai.mapper.AiLongTermMemoryMapper">
+
+    <resultMap type="com.hoho.ai.domain.AiLongTermMemory" id="AiLongTermMemoryResult">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="conversationId" column="conversation_id"/>
+        <result property="memoryType" column="memory_type"/>
+        <result property="memoryKey" column="memory_key"/>
+        <result property="memoryValue" column="memory_value"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectAiLongTermMemoryVo">
+        select id, user_id, conversation_id, memory_type, memory_key, memory_value, create_time, update_time
+        from ai_long_term_memory
+    </sql>
+
+    <select id="selectByUniqueKey" resultMap="AiLongTermMemoryResult">
+        <include refid="selectAiLongTermMemoryVo"/>
+        where user_id = #{userId}
+          and memory_type = #{memoryType}
+          and memory_key = #{memoryKey}
+        limit 1
+    </select>
+
+    <insert id="insert" parameterType="com.hoho.ai.domain.AiLongTermMemory" useGeneratedKeys="true" keyProperty="id">
+        insert into ai_long_term_memory(user_id, conversation_id, memory_type, memory_key, memory_value)
+        values(#{userId}, #{conversationId}, #{memoryType}, #{memoryKey}, #{memoryValue})
+    </insert>
+
+    <update id="update" parameterType="com.hoho.ai.domain.AiLongTermMemory">
+        update ai_long_term_memory
+        set conversation_id = #{conversationId},
+            memory_value = #{memoryValue},
+            update_time = CURRENT_TIMESTAMP
+        where id = #{id}
+    </update>
+
+    <select id="selectByUserId" resultMap="AiLongTermMemoryResult">
+        <include refid="selectAiLongTermMemoryVo"/>
+        where user_id = #{userId}
+        order by id desc
+    </select>
+
+</mapper>

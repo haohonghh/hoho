@@ -2,6 +2,7 @@ package com.hoho.bot.service;
 
 import com.hoho.bot.api.RemoteAiProxyService;
 import com.hoho.bot.model.request.AiChatRequest;
+import com.hoho.bot.model.request.AiLongTermMemoryUpsertRequest;
 import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.common.core.domain.R;
@@ -97,6 +98,38 @@ public class AiProxyClient
             throw new IllegalStateException(response == null ? "AI短期记忆追加无响应" : response.getMsg());
         }
         log.info("追加AI短期记忆完成 conversationId={}, cost={}ms", conversationId, System.currentTimeMillis() - start);
+    }
+
+    /**
+     * 写入长期记忆。
+     *
+     * @param userId         用户编号
+     * @param conversationId 会话编号
+     * @param memoryType     记忆类型
+     * @param memoryKey      记忆键
+     * @param memoryValue    记忆内容
+     */
+    public void upsertLongTermMemory(Long userId, String conversationId, String memoryType, String memoryKey, String memoryValue)
+    {
+        AiLongTermMemoryUpsertRequest request = new AiLongTermMemoryUpsertRequest();
+        request.setUserId(userId);
+        request.setConversationId(conversationId);
+        request.setMemoryType(memoryType);
+        request.setMemoryKey(memoryKey);
+        request.setMemoryValue(memoryValue);
+
+        long start = System.currentTimeMillis();
+        log.info("写入AI长期记忆开始 userId={}, conversationId={}, memoryType={}, memoryKey={}",
+                userId, conversationId, memoryType, memoryKey);
+        R<Void> response = remoteAiProxyService.upsertLongTermMemory(request);
+        if (response == null || R.isError(response))
+        {
+            log.warn("写入AI长期记忆失败 userId={}, conversationId={}, cost={}ms, reason={}",
+                    userId, conversationId, System.currentTimeMillis() - start, response == null ? "无响应" : response.getMsg());
+            throw new IllegalStateException(response == null ? "AI长期记忆写入无响应" : response.getMsg());
+        }
+        log.info("写入AI长期记忆完成 userId={}, conversationId={}, cost={}ms",
+                userId, conversationId, System.currentTimeMillis() - start);
     }
 
     private int length(String value)

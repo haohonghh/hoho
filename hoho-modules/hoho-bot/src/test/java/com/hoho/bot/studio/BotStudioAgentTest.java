@@ -57,7 +57,7 @@ class BotStudioAgentTest
 
         StubBotService()
         {
-            super(null, null, new BotProperties(), null);
+            super(null, null, null, new BotProperties(), null, null);
         }
 
         @Override

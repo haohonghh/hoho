@@ -5,6 +5,7 @@ import java.util.List;
 import com.hoho.bot.api.RemoteAiProxyService;
 import com.hoho.bot.api.RemoteKbService;
 import com.hoho.bot.model.request.AiChatRequest;
+import com.hoho.bot.model.request.AiLongTermMemoryUpsertRequest;
 import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.request.KbQaRequest;
 import com.hoho.bot.model.request.KbSearchRequest;
@@ -150,6 +151,12 @@ class BotFeignClientTest
         public R<Void> appendMemory(AiMemoryAppendRequest request)
         {
             lastMemoryRequest = request;
+            return R.ok();
+        }
+
+        @Override
+        public R<Void> upsertLongTermMemory(AiLongTermMemoryUpsertRequest request)
+        {
             return R.ok();
         }
     }

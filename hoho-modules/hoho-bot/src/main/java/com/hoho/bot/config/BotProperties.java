@@ -29,6 +29,8 @@ public class BotProperties
 
         private String fallbackSystemPrompt = "你是企业IT运维智能客服助手。知识库未命中时，请给出简洁、谨慎、可执行的建议，并提醒用户必要时联系人工运维。";
 
+        private String serviceDegradeReply = "当前智能服务暂时不可用，请稍后重试或联系人工运维。";
+
         public double getMinScore()
         {
             return directMinScore;
@@ -77,6 +79,16 @@ public class BotProperties
         public void setFallbackSystemPrompt(String fallbackSystemPrompt)
         {
             this.fallbackSystemPrompt = fallbackSystemPrompt;
+        }
+
+        public String getServiceDegradeReply()
+        {
+            return serviceDegradeReply;
+        }
+
+        public void setServiceDegradeReply(String serviceDegradeReply)
+        {
+            this.serviceDegradeReply = serviceDegradeReply;
         }
     }
 

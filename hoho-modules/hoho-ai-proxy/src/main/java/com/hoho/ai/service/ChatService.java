@@ -15,6 +15,7 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 /**
  * 对话服务
@@ -32,6 +33,8 @@ public class ChatService
 
     private final AiProxyProperties aiProxyProperties;
 
+    private final MemorySummaryService memorySummaryService;
+
     public ChatService(ChatModel chatModel, ChatMemory chatMemory, AiProxyProperties aiProxyProperties)
     {
         this.chatModel = chatModel;
@@ -41,6 +44,7 @@ public class ChatService
                         new SimpleLoggerAdvisor())
                 .build();
         this.aiProxyProperties = aiProxyProperties;
+        this.memorySummaryService = new MemorySummaryService(chatMemory, aiProxyProperties);
     }
 
     /**
@@ -81,11 +85,43 @@ public class ChatService
         response.setContent(modelResponse.getResult().getOutput().getText());
         response.setModel(modelResponse.getMetadata().getModel());
         response.setUsage(toUsage(modelResponse.getMetadata().getUsage()));
+        memorySummaryService.summarizeIfNecessary(conversationId);
         log.info("AI对话完成 conversationId={}, model={}, outputLength={}, totalTokens={}, cost={}ms",
                 conversationId, response.getModel(), length(response.getContent()),
                 response.getUsage() == null ? null : response.getUsage().getTotalTokens(),
                 System.currentTimeMillis() - start);
         return response;
+    }
+
+    /**
+     * 执行流式对话调用，逐片返回模型输出内容。
+     *
+     * <p>与同步对话保持同样的消息拼装、默认提示词和短期记忆读取逻辑，
+     * 仅将最终结果改为流式文本片段输出，供 SSE 接口逐段推送给调用方。</p>
+     *
+     * @param request 对话请求
+     * @return 按生成顺序输出的文本片段流
+     */
+    public Flux<String> stream(ChatRequest request)
+    {
+        String message = requireText(request == null ? null : request.getMessage(), "消息内容不能为空");
+        String systemPrompt = defaultIfBlank(request.getSystemPrompt(), aiProxyProperties.getChat().getDefaultSystemPrompt());
+        String conversationId = resolveConversationId(request.getConversationId());
+        long start = System.currentTimeMillis();
+        log.info("AI流式对话开始 conversationId={}, messageLength={}, systemPromptLength={}, model={}, temperature={}, maxTokens={}",
+                conversationId, message.length(), length(systemPrompt), request.getModel(), request.getTemperature(),
+                request.getMaxTokens());
+
+        return chatClient.prompt()
+                .system(systemPrompt)
+                .user(message)
+                .options(buildOptions(request))
+                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId))
+                .stream()
+                .content()
+                .doOnComplete(() -> memorySummaryService.summarizeIfNecessary(conversationId))
+                .doOnComplete(() -> log.info("AI流式对话完成 conversationId={}, cost={}ms", conversationId,
+                        System.currentTimeMillis() - start));
     }
 
     public String modelName()

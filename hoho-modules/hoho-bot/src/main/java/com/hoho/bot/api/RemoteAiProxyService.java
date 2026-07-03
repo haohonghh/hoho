@@ -2,6 +2,7 @@ package com.hoho.bot.api;
 
 import com.hoho.bot.api.factory.RemoteAiProxyFallbackFactory;
 import com.hoho.bot.model.request.AiChatRequest;
+import com.hoho.bot.model.request.AiLongTermMemoryUpsertRequest;
 import com.hoho.bot.model.request.AiMemoryAppendRequest;
 import com.hoho.bot.model.response.AiChatResponse;
 import com.hoho.common.core.domain.R;
@@ -35,4 +36,13 @@ public interface RemoteAiProxyService
      */
     @PostMapping("/ai/memory/append")
     R<Void> appendMemory(@RequestBody AiMemoryAppendRequest request);
+
+    /**
+     * 写入AI长期记忆。
+     *
+     * @param request 长期记忆写入请求
+     * @return 写入结果
+     */
+    @PostMapping("/ai/memory/long-term/upsert")
+    R<Void> upsertLongTermMemory(@RequestBody AiLongTermMemoryUpsertRequest request);
 }

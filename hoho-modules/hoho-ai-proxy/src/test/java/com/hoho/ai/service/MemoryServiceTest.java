@@ -2,6 +2,7 @@ package com.hoho.ai.service;
 
 import java.util.List;
 
+import com.hoho.ai.config.AiProxyProperties;
 import com.hoho.ai.model.request.MemoryAppendRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -21,7 +22,7 @@ class MemoryServiceTest
                 .chatMemoryRepository(new InMemoryChatMemoryRepository())
                 .maxMessages(10)
                 .build();
-        MemoryService memoryService = new MemoryService(chatMemory);
+        MemoryService memoryService = new MemoryService(chatMemory, new MemorySummaryService(chatMemory, new AiProxyProperties()));
 
         MemoryAppendRequest request = new MemoryAppendRequest();
         request.setConversationId("session-1");

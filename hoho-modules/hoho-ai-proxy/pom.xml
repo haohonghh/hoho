@@ -47,6 +47,12 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- PostgreSQL -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+
         <!-- Spring AI Alibaba DashScope -->
         <dependency>
             <groupId>com.alibaba.cloud.ai</groupId>
@@ -69,6 +75,12 @@
         <dependency>
             <groupId>com.hoho</groupId>
             <artifactId>hoho-common-redis</artifactId>
+        </dependency>
+
+        <!-- Hoho Common DataSource -->
+        <dependency>
+            <groupId>com.hoho</groupId>
+            <artifactId>hoho-common-datasource</artifactId>
         </dependency>
 
         <!-- Hoho Common Swagger -->

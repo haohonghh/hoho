@@ -3,6 +3,32 @@
 # Group: DEFAULT_GROUP
 
 spring:
+  datasource:
+    druid:
+      stat-view-servlet:
+        enabled: true
+        loginUsername: hoho
+        loginPassword: 123456
+    dynamic:
+      druid:
+        initial-size: 5
+        min-idle: 2
+        maxActive: 10
+        maxWait: 60000
+        connectTimeout: 30000
+        socketTimeout: 60000
+        timeBetweenEvictionRunsMillis: 60000
+        minEvictableIdleTimeMillis: 300000
+        validationQuery: SELECT 1
+        testWhileIdle: true
+        testOnBorrow: false
+        testOnReturn: false
+      datasource:
+        master:
+          driver-class-name: org.postgresql.Driver
+          url: jdbc:postgresql://localhost:5432/hoho_kb
+          username: postgres
+          password: postgres
   data:
     redis:
       host: localhost
@@ -14,7 +40,7 @@ spring:
       chat: dashscope
       embedding: ollama
     dashscope:
-      api-key: ${AI_DASHSCOPE_API_KEY}
+      api-key: ${DASHSCOPE_API_KEY}
       chat:
         enabled: true
         options:
@@ -24,18 +50,24 @@ spring:
     ollama:
       base-url: http://localhost:11434
       embedding:
-        model: bge-m3
+        model: embeddinggemma
         options:
-          model: bge-m3
+          model: embeddinggemma
 
 hoho:
   ai:
     chat:
       default-system-prompt: 你是企业IT运维智能客服助手，回答要准确、简洁、可执行。
     embedding:
-      dimension: 1024
+      dimension: 768
       batch-size: 16
     memory:
-      max-messages: 10
+      max-messages: 6
       ttl-minutes: 120
       key-prefix: "hoho:ai:memory:"
+      summary-trigger-message-count: 8
+      summary-keep-recent-messages: 2
+
+mybatis:
+  typeAliasesPackage: com.hoho.ai.domain
+  mapperLocations: classpath:mapper/**/*.xml

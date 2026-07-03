@@ -84,6 +84,10 @@ public class AiProxyProperties
 
         private String keyPrefix = "hoho:ai:memory:";
 
+        private int summaryTriggerMessageCount = 12;
+
+        private int summaryKeepRecentMessages = 4;
+
         public int getMaxMessages()
         {
             return maxMessages;
@@ -112,6 +116,26 @@ public class AiProxyProperties
         public void setKeyPrefix(String keyPrefix)
         {
             this.keyPrefix = keyPrefix;
+        }
+
+        public int getSummaryTriggerMessageCount()
+        {
+            return summaryTriggerMessageCount;
+        }
+
+        public void setSummaryTriggerMessageCount(int summaryTriggerMessageCount)
+        {
+            this.summaryTriggerMessageCount = summaryTriggerMessageCount;
+        }
+
+        public int getSummaryKeepRecentMessages()
+        {
+            return summaryKeepRecentMessages;
+        }
+
+        public void setSummaryKeepRecentMessages(int summaryKeepRecentMessages)
+        {
+            this.summaryKeepRecentMessages = summaryKeepRecentMessages;
         }
     }
 }

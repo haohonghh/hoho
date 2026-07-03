@@ -21,9 +21,12 @@ public class MemoryService
 {
     private final ChatMemory chatMemory;
 
-    public MemoryService(ChatMemory chatMemory)
+    private final MemorySummaryService memorySummaryService;
+
+    public MemoryService(ChatMemory chatMemory, MemorySummaryService memorySummaryService)
     {
         this.chatMemory = chatMemory;
+        this.memorySummaryService = memorySummaryService;
     }
 
     /**
@@ -51,6 +54,7 @@ public class MemoryService
             throw new IllegalArgumentException("记忆消息不能为空");
         }
         chatMemory.add(conversationId, messages);
+        memorySummaryService.summarizeIfNecessary(conversationId);
     }
 
     private String requireText(String value, String message)
